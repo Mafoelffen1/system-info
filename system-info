@@ -349,8 +349,8 @@ function GetInternetStatus()
         else
             echo -e "Cannot reach internet by IP..."
         fi
-        nl
     fi    
+    nl
 }
 
 function GetPingStatus()
@@ -455,13 +455,21 @@ function GetGraphicsEnv()
 {
     # Gets Graphics Layer Information. Called once by Writer().
     echo -e "${setansi}---------- Video Details from 'lshw':$ransi"
-    lshw_data=$(sudo lshw -C video)
+    nl
+    #lshw_data=$(sudo lshw -C video )
+    lshw_data=$(sudo lshw -C video \
+        | sed -e 's/ *resources/resources/' \
+        -e '/resources/ s/ [^ ]*:[^ ]*/ \n&/g' \
+        -e 's/resources:/       resources:/g' \
+        | sed 's/^ [^ ]/          &/' )
+    
     if [ "$lshw_data" == "" ]
     then
         echo -e "No conventional GPU detected. May be using a Frame Buffer."
     else
         echo -e "$lshw_data"
     fi
+    nl
     echo -e "   --- Graphics Environment Continued ----" 
     if [ $XDG_CURRENT_DESKTOP ] 
     then 
