@@ -198,12 +198,47 @@ function GetCPU()
     echo -e "${setansi}---------- General computer specs:$ransi"
     nl
     echo -e "  --- Computer/CPU Information --- "
-    # $lshw_cmd | sed '/*-core/,$ d'
-    $lshw_cmd | sed '/*-core/,$ d' \
-        | sed -e 's/ *configuration/configuration/' \
-        -e '/configuration/ s/ [^ ]*=[^ ]*/\n&/g' \
-        -e 's/configuration/    configuration/' | sed 's/^ [^ ]/       &/'
+    $lshw_cmd -C cpu \
+        | sed -e 's/desc/Desc/g' \
+        -e 's/prod/Prod/g' \
+        -e 's/vend/Vend/g' \
+        -e 's/physical.id/Physical Id/g' \
+        -e 's/bus.info/Bus Info/g' \
+        -e 's/vers/Vers/g' \
+        -e 's/serial/Serial/g' \
+        -e 's/slot/Slot/g' \
+        -e 's/size/Size/g' \
+        -e 's/capa/Capa/g' \
+        -e 's/widt/Widt/g' \
+        -e 's/cloc/Cloc/g' \
+        -e 's/conf/Conf/g' \
+        | sed -e 's/^ *\*-cpu/Cpu/g' \
+        | sed '/Capabilities/ s/ *Capabilities/  Capabilities/' \
+        | fold -sw 71 \
+        |sed -e 's/^[^ ]/           &/' \
+        -e 's/ *Cpu/Cpu/g' \
+        -e 's/ Capabilities/   Capabilities/' \
+        -e 's/       /    /' \
+        -e '/Capabilities/ s/^[^ ]/          &/'
     nl
+    $lshw_cmd \
+        | sed '/*-core/,$ d' \
+        | sed -e 's/compu/Compu/g' \
+        -e 's/desc/Desc/g' \
+        -e 's/prod/Prod/g' \
+        -e 's/vendor/Vendord/g' \
+        -e 's/version/Version/g' \
+        -e 's/widt/Widt/g' \
+        -e 's/capab/Capab/g' \
+        -e 's/conf/Conf/g' \
+        | sed -e 's/ *Configuration/ Configuration/' \
+        -e '/Configuration/ s/ [^ ]*=[^ ]*/\n&/g' \
+        -e 's/Configuration/   Configuration/' \
+        | sed 's/^ [^ ]/       &/'
+    nl
+    # The below line matches on finding the fisrt alpha of each line, with leading spaces,
+    # but for some reason will not capitalize that alpa(???)
+    #     | sed -e 's/^  *([a-z])/  \u&/' \
 }
 
 function GetDmi()
