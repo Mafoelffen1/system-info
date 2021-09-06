@@ -588,7 +588,7 @@ function GetDistUpgradeDate()
         drg_date=$(sudo egrep -m 1 '[code]' /var/log/dist-upgrade/apt.log | awk '{"Do-Release-Upgrade Date: "$2}' )
         echo -e "$drg_date"
     else
-        echo -e "Do-Release-Upgrade Date: This system may have not had a 'Releases Upgrade' through 'do-release-upgrade'"
+        echo -e "Do-Release-Upgrade Date: This system may have not had a 'Release Upgrade' through 'do-release-upgrade'"
     fi
 }
 
