@@ -582,10 +582,10 @@ function GetInstallMedia()
 function GetDistUpgradeDate()
 {
     # Gets Do_Release_Update date. Called once by GetOtherDetails().
-    # Only displays if it it ever had a do-release-upgrade process done
+    # Displays if it it ever had a do-release-upgrade process done
     if [ -f /var/log/dist-upgrade/apt.log ]
     then
-        drg_date=$(sudo egrep -m 1 '[code]' /var/log/dist-upgrade/apt.log | awk '{"Do-Release-Upgrade Date: "$2}' )
+        drg_date=$(sudo egrep -m 1 'Log Time' /var/log/dist-upgrade/apt.log | awk '{"Do-Release-Upgrade Date: "$3 }' )
         echo -e "$drg_date"
     else
         echo -e "Do-Release-Upgrade Date: This system may have not had a 'Release Upgrade' through 'do-release-upgrade'"
