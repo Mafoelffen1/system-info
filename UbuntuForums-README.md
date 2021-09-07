@@ -15,7 +15,7 @@ You can either run it from the command line (Console or Terminal Session) with t
 
     wget -N -t 5 -T 10 https://github.com/UbuntuForums/system-info/raw/main/system-info && \
     chmod +x system-info && \
-    ./system-info
+    ./support-info
 
 This will download the script, make it executable, and run it, all in a row.
 
