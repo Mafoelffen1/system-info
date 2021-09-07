@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## MAFoElffen, <mafoelffen@ubuntu.com>, 2021.08.19
-## Version 00.07-01, 2021.09.05
+## Version 00.07-02, 2021.09.06
 ## Contributers:
 ##     sudodus <nio.wiklund@gmail.com>, 2021.08.25
 ##     Doug S,  2021.08.22
@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 00.07-01, Script Date: 2021.09.05"
+version="Version: 00.07-02, Script Date: 2021.09.06"
 arg1=$1
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
@@ -199,19 +199,7 @@ function GetCPU()
     nl
     echo -e "  --- Computer/CPU Information --- "
     $lshw_cmd -C cpu \
-        | sed -e 's/desc/Desc/g' \
-        -e 's/prod/Prod/g' \
-        -e 's/vend/Vend/g' \
-        -e 's/physical.id/Physical Id/g' \
-        -e 's/bus.info/Bus Info/g' \
-        -e 's/vers/Vers/g' \
-        -e 's/serial/Serial/g' \
-        -e 's/slot/Slot/g' \
-        -e 's/size/Size/g' \
-        -e 's/capa/Capa/g' \
-        -e 's/widt/Widt/g' \
-        -e 's/cloc/Cloc/g' \
-        -e 's/conf/Conf/g' \
+        | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
         | sed -e 's/^ *\*-cpu/Cpu/g' \
         | sed '/Capabilities/ s/ *Capabilities/  Capabilities/' \
         | fold -sw 71 \
@@ -223,14 +211,7 @@ function GetCPU()
     nl
     $lshw_cmd \
         | sed '/*-core/,$ d' \
-        | sed -e 's/compu/Compu/g' \
-        -e 's/desc/Desc/g' \
-        -e 's/prod/Prod/g' \
-        -e 's/vendor/Vendord/g' \
-        -e 's/version/Version/g' \
-        -e 's/widt/Widt/g' \
-        -e 's/capab/Capab/g' \
-        -e 's/conf/Conf/g' \
+        | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
         | sed -e 's/ *Configuration/ Configuration/' \
         -e '/Configuration/ s/ [^ ]*=[^ ]*/\n&/g' \
         -e 's/Configuration/   Configuration/' \
