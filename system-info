@@ -329,7 +329,7 @@ function GetUsb()
 {
     # Gets USB information. Called once by Writer().
     echo -e "${setansi}---------- USB Information:$ransi"
-    usb_info=$(lsusb -t -vv)
+    usb_info=$(lsusb -t -v)
     echo -e "$usb_info"
     nl
 }
