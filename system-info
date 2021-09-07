@@ -91,6 +91,7 @@ function CheckPrerequisites()
     	free
     	gsettings
     	gzip
+    	curl
     	ls
     	rm
     	sed
@@ -217,9 +218,6 @@ function GetCPU()
         -e 's/Configuration/   Configuration/' \
         | sed 's/^ [^ ]/       &/'
     nl
-    # The below line matches on finding the fisrt alpha of each line, with leading spaces,
-    # but for some reason will not capitalize that alpa(???)
-    #     | sed -e 's/^  *([a-z])/  \u&/' \
 }
 
 function GetDmi()
@@ -697,6 +695,12 @@ function Writer
     ReportFooter
 }
 
+function CheckCurl()
+{
+    [ -e /usr/bin/curl ];
+    check_curl=$?
+}
+
 function ProgressActive()
 {
     # Provides a spinner to show progress. Called once by Paster.
@@ -714,16 +718,16 @@ function ProgressActive()
     stdbuf -oL echo -en '\b '
 }
 
-function Paster() 
+function Paster() ##* Currently in Test
  {
-     # Provides pastebinit upload of report. Calls ProgressActive(). Called once by Main().
-     #    command: pastebinit -a $USER -i $HOME/system-info.txt" -b "paste.ubuntu.com" -t "system-info.txt"
-     #    returned: https://paste.ubuntu.com/p/SRZwqjHjJZ/
-     target="paste.ubuntu.com"
-     linklog="$HOME/${sname}-link.log"
+     # Provides curl upload of report with a progress bar. Called once by Main().
+     target="https://paste.ubuntu.com"
+     linklog="$HOME/system-info-link.log"
+
      echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
-     ## Eval check_pastebinit
-     if [ $check_pastebinit -eq 1 ]
+     CheckCurl  # Check if 'curl' is installed and set check_curl. 0 if true, 1 if false
+     ## Eval check_curl
+     if [ $check_curl -eq 0 ]
      then 
          read -p "Do you want to upload the report file fo '$target'? (y/N) " ans
          if [[ ${ans,} =~ ^[Yy]$ ]]
@@ -735,9 +739,16 @@ function Paster()
                  echo -e "This may take 1-2 minutes..."
                  nl
                  tput civis
-                keep_spinning=$(mktemp)
-                ProgressActive "$keep_spinning" & pid_progressactive=$!
-                return_url=$(pastebinit -a "$USER" -i "$report" -b "$target" -t "$sname.txt")
+                 keep_spinning=$(mktemp)
+                 ProgressActive "$keep_spinning" & pid_progressactive=$!
+                 return_url=$(curl -fsSL -X POST \
+                     --url $target \
+                     --output /dev/null \
+                     --write-out "%{url_effective}\n" \
+                     --data-urlencode "content@${PASTEBIN_CONTENT:-$report}" \
+                     --data "poster=${PASTEBIN_POSTER:-`whoami`@`hostname`}" \
+                     --data "syntax=${PASTEBIN_SYNTAX:-text}" \
+                     --data "expiration=${PASTEBIN_EXPIRATION:-day}")
                  if [ $? -eq 0 ]
                  then
                     paste_done=true
@@ -766,6 +777,69 @@ function Paster()
                     echo -e" No connection to pastebin.ubuntu.com " | tee -a "$linklog"
              fi
          fi
+    else
+        echo -e "$redback    The package 'curl' is not installed.    $resetvid"
+        nl
+        echo -e "Either rerun the script after installing curl, or"
+        echo -e "Upload the file manually: 'copy & paste' to"
+        nl
+        echo -e "https://paste.ubuntu.com/"
+        nl
+    fi
+}
+
+function PasterOld() 
+{
+    # Provides pastebinit upload of report. Calls ProgressActive(). Called once by Main().
+    #    command: pastebinit -a $USER -i $HOME/system-info.txt" -b "paste.ubuntu.com" -t "system-info.txt"
+    #    returned: https://paste.ubuntu.com/p/SRZwqjHjJZ/
+    target="paste.ubuntu.com"
+    linklog="$HOME/${sname}-link.log"
+    echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
+    ## Eval check_pastebinit
+    if [ $check_pastebinit -eq 1 ]
+    then 
+        read -p "Do you want to upload the report file fo '$target'? (y/N) " ans
+        if [[ ${ans,} =~ ^[Yy]$ ]]
+        then
+            GetPingStatus "www.ubuntu.com"
+            if [ "$return_status" == "true" ]
+            then
+                echo "Uploading '$report' to '$target'"
+                echo -e "This may take 1-2 minutes..."
+                nl
+                tput civis
+                keep_spinning=$(mktemp)
+                ProgressActive "$keep_spinning" & pid_progressactive=$!
+                return_url=$(pastebinit -a "$USER" -i "$report" -b "$target" -t "$sname.txt")
+                if [ $? -eq 0 ]
+                then
+                    paste_done=true
+                else
+                    paste_done=false
+                fi
+                rm "$keep_spinning"
+                sleep 0.5
+                tput cnorm
+                if $paste_done
+                then
+                    echo -e "Uploaded Report: ${startt}:" >> "$linklog"
+                    echo -e "$blueback Upload successful $resetvid"
+                    nl
+                    echo -e "The link to the pastebin is saved in: '$linklog'"
+                    nl
+                    echo -e "View at: $return_url" | tee -a "$linklog"
+                    nl
+                else
+                    echo -e "$redback Upload failed $resetvid"
+                    echo -e "Upload the file manually: 'copy & paste' to"
+                    echo -e "https://paste.ubuntu.com/"
+                    nl
+                fi
+            else
+                   echo -e" No connection to pastebin.ubuntu.com " | tee -a "$linklog"
+            fi
+        fi
     else
         echo -e "$redback    The package 'pastebinit' is not installed.    $resetvid"
         nl
