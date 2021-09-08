@@ -1,7 +1,7 @@
 #!/bin/bash
 
 ## MAFoElffen, <mafoelffen@ubuntu.com>, 2021.08.19
-## Version 00.07-03, 2021.09.07
+## Version 00.07-04, 2021.09.07
 ## Contributers:
 ##     sudodus <nio.wiklund@gmail.com>, 2021.08.25
 ##     Doug S,  2021.08.22
@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 00.07-03, Script Date: 2021.09.06"
+version="Version: 00.07-04, Script Date: 2021.09.07"
 arg1=$1
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
@@ -104,7 +104,7 @@ function CheckPrerequisites()
     	lsusb
     	sleep
     	sort
-    	pastebinit
+    	whoami
     	who'
 
     # Programs that are in /usr/sbin or /sbin.
@@ -112,25 +112,17 @@ function CheckPrerequisites()
     	lshw'
 
     check_prog=1;
-    check_pastebinit=1;
     check_mokutil=1;
 
     for Program in ${Programs} ${Programs_SBIN} 
     do
         if [ $(type ${Program} > /dev/null 2>&1 ; echo $?) -ne 0 ]
         then
-            if [[ "$Program" == "pastebinit" ]]   # If this missing, it is an option. 
-            then
-                check_pastebinit=0;    # Set Flag to false and recheck in Paster()
-            elif [[ "$Program" == "mokutil" ]]   # TODO # Look at this further...
+            if [[ "$Program" == "mokutil" ]]
             then    # If not 'Here' condition
-                # If this missing, it is a variant for UEFI systems only. But may work on 18.04 where it was not default yet, and would 
-                # be a useful option to see if there "is" a SecureBoot option in the BIOS... Besides just what it is set at. There is no 
-                # way to 'guess' at if it might have been 'booted" as a Legacy, but is actually a UEFI capable BIOS... Maybe stretch 
-                # looking into this as a possibillity to explore that. To  query the BIOS and see if it is actually UEFI, but it was 
-                # booted as Legacy boot. That would be fine if it was, and would be beyond what Linux Kernel looks at... But we do not 
-                # want to force this on Legacy only BIOS users... Or not? I've never used this tool on a Legacy BIOS, because I just knew 
-                # it was the wrong tool for those, and just assumed it would crash the system.
+                # If this missing, it is a variant for UEFI systems only. It does work on 18.04 where it was not default yet, and is 
+                # a useful option to see if there "is" a SecureBoot option in the BIOS, besides just what it is set at. This, during 
+                # tests, is afe to install on Legacy Ony BIOS systems and can be used to tell if the BIOS is such.
                 echo -e "$redback \"${Program}\" could not be found. $resetvid" 
                 check_mokutil=0;    # Set Flag to false and recheck in GetSb()
                 check_prog=0
@@ -795,70 +787,6 @@ function Paster() ##* Currently in Test
         nl
     fi
 }
-
-function PasterOld() 
-{
-    # Provides pastebinit upload of report. Calls ProgressActive(). Called once by Main().
-    #    command: pastebinit -a $USER -i $HOME/system-info.txt" -b "paste.ubuntu.com" -t "system-info.txt"
-    #    returned: https://paste.ubuntu.com/p/SRZwqjHjJZ/
-    target="paste.ubuntu.com"
-    linklog="$HOME/${sname}-link.log"
-    echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
-    ## Eval check_pastebinit
-    if [ $check_pastebinit -eq 1 ]
-    then 
-        read -p "Do you want to upload the report file fo '$target'? (y/N) " ans
-        if [[ ${ans,} =~ ^[Yy]$ ]]
-        then
-            GetPingStatus "www.ubuntu.com"
-            if [ "$return_status" == "true" ]
-            then
-                echo "Uploading '$report' to '$target'"
-                echo -e "This may take 1-2 minutes..."
-                nl
-                tput civis
-                keep_spinning=$(mktemp)
-                ProgressActive "$keep_spinning" & pid_progressactive=$!
-                return_url=$(pastebinit -a "$USER" -i "$report" -b "$target" -t "$sname.txt")
-                if [ $? -eq 0 ]
-                then
-                    paste_done=true
-                else
-                    paste_done=false
-                fi
-                rm "$keep_spinning"
-                sleep 0.5
-                tput cnorm
-                if $paste_done
-                then
-                    echo -e "Uploaded Report: ${startt}:" >> "$linklog"
-                    echo -e "$blueback Upload successful $resetvid"
-                    nl
-                    echo -e "The link to the pastebin is saved in: '$linklog'"
-                    nl
-                    echo -e "View at: $return_url" | tee -a "$linklog"
-                    nl
-                else
-                    echo -e "$redback Upload failed $resetvid"
-                    echo -e "Upload the file manually: 'copy & paste' to"
-                    echo -e "https://paste.ubuntu.com/"
-                    nl
-                fi
-            else
-                   echo -e" No connection to pastebin.ubuntu.com " | tee -a "$linklog"
-            fi
-        fi
-    else
-        echo -e "$redback    The package 'pastebinit' is not installed.    $resetvid"
-        nl
-        echo -e "Either rerun the script after installing pastebinit, or"
-        echo -e "Upload the file manually: 'copy & paste' to"
-        nl
-        echo -e "https://paste.ubuntu.com/"
-        nl
-    fi
-}
-
 
 
 ########################################################################
