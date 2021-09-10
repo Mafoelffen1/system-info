@@ -93,6 +93,9 @@ function CheckPrerequisites()
     	gzip
     	mokutil
     	curl
+    	pasteebinit
+    	nc
+    	wget
     	ls
     	rm
     	sed
@@ -125,7 +128,10 @@ function CheckPrerequisites()
                 # tests, is afe to install on Legacy Ony BIOS systems and can be used to tell if the BIOS is such.
                 echo -e "$redback \"${Program}\" could not be found. $resetvid" 
                 check_mokutil=0;    # Set Flag to false and recheck in GetSb()
-                check_prog=0
+                check_prog=0;
+            else
+                echo -e "$Program is not installed."
+                check_prog=0;
             fi
         fi
     done
@@ -194,11 +200,11 @@ function GetCPU()
     echo -e "  --- Computer/CPU Information --- "
     $lshw_cmd -C cpu \
         | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
-        | sed -e 's/^ *\*-cpu/Cpu/g' \
+        | sed -e 's/^ *\*-cpu/\*-Cpu/g' \
         | sed '/Capabilities/ s/ *Capabilities/  Capabilities/' \
         | fold -sw 71 \
         |sed -e 's/^[^ ]/           &/' \
-        -e 's/ *Cpu/Cpu/g' \
+        -e 's/ *\*-Cpu/\*-Cpu/g' \
         -e 's/ Capabilities/   Capabilities/' \
         -e 's/       /    /' \
         -e '/Capabilities/ s/^[^ ]/          &/'
@@ -694,10 +700,100 @@ function Writer
     ReportFooter
 }
 
-function CheckCurl()
+function PasteCurl()
 {
-    [ -e /usr/bin/curl ];
-    check_curl=$?
+    return_url=$(curl -fsSL -X POST \
+        --url $target \
+        --output /dev/null \
+        --write-out "%{url_effective}\n" \
+        --data-urlencode "content@${PASTEBIN_CONTENT:-$report}" \
+        --data "poster=${PASTEBIN_POSTER:-`whoami`@`hostname`}" \
+        --data "syntax=${PASTEBIN_SYNTAX:-text}" \
+        --data "expiration=${PASTEBIN_EXPIRATION:-week}")
+    check_paste=$?
+    echo -e "Response: $return_url"
+    echo -e "Exit code: $check_paste"
+}
+
+function PastePastebinit()
+{
+    return_url=$(pastebinit \
+        -a "$USER" \
+        -i "$report" \
+        -b "$target" \
+        -t "$sname.txt")
+    check_paste=$?
+    echo -e "Response: $return_url"
+    echo -e "Exit code: $check_paste"
+}
+
+function PasteWget()
+{
+    return_url=$(wget --quiet -O- --post-data="$(cat $report)" 'termbin.com:9999' | tr '\0' '\n' )
+    check_paste=$?
+    echo -e "Response: $return_url"
+    echo -e "Exit code: $check_paste"
+}
+
+function PasteNc()
+{
+    echo -e "This uses a program which sometimes conflicts with " 
+    echo -e "Anti-Virus Programs. You should turn that off if you "
+    echo -e "have installed."
+    read -p "Would you like to proceed or skip? (y/N) " ans
+    if [[ ${ans,} =~ ^[Yy]$ ]]
+    then
+        return_url=$(cat $report | nc termbin.com 9999 | tr '\0' '\n')
+        check_paste=$?
+        echo -e "Response: $return_url"
+        echo -e "Exit code: $check_paste"
+    else
+        echo -e "You skipped uploading to Pastebin."
+        check_paste=1
+    fi
+}
+
+function CheckPasterProgs()
+{
+    if [ -e /usr/bin/curl ]
+    then
+        paste_prog=1;
+    elif [ -e /usr/bin/pastebinit ]
+    then
+        paste_prog=2;
+    elif [ -e /usr/bin/wget ]
+    then
+        paste_prog=3;
+    elif [ -e /usr/bin/nc || -e /bin/nc ]
+    then
+        paste_prog=4;
+    else
+        paste_prog=0;
+        echo -e "Many utilites were not found. Something is wrong.";
+    fi
+}
+
+function DoPaste()
+{
+    prog_here=$1
+    echo -e "Passed $prog_here"
+    case "$prog_here" in
+        1)
+            PasteCurl
+            ;;
+        2)
+            PastePastebinit
+            ;;
+        3)
+            PasteWget
+            ;;
+        4)
+            PasteNc
+            ;;
+        *)
+            echo -e "Something went wrong. Error out of range."
+            exit 1
+    esac    
 }
 
 function ProgressActive()
@@ -717,7 +813,75 @@ function ProgressActive()
     stdbuf -oL echo -en '\b '
 }
 
-function Paster() ##* Currently in Test
+function Paster() 
+ {
+     # Provides an upload of report with a progress bar. Called once by Main().
+     target="https://paste.ubuntu.com"
+     linklog="$HOME/system-info-link.log"
+
+     echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
+     CheckPasterProgs     
+     ## Eval $paste_prog
+     if [ $paste_prog -ne 0 ]
+     then 
+         read -p "Do you want to upload the report file fo '$target'? (y/N) " ans
+         if [[ ${ans,} =~ ^[Yy]$ ]]
+         then
+             GetPingStatus "www.ubuntu.com"
+             if [ "$return_status" == "true" ]
+             then
+                 echo "Uploading '$report' to '$target'"
+                 echo -e "This may take 1-2 minutes..."
+                 nl
+                 tput civis
+                 keep_spinning=$(mktemp)
+                 ProgressActive "$keep_spinning" & pid_progressactive=$!
+                 DoPaste $paste_prog
+                 if [ $check_paste -eq 0 ]
+                 then
+                    paste_done=true
+                 else
+                    paste_done=false
+                 fi
+                 rm "$keep_spinning"
+                 sleep 0.5
+                 tput cnorm
+                 if [ $paste_done == 0 ]
+                 then
+                     echo -e "Uploaded Report: ${startt}:" >> "$linklog"
+                     echo -e "$blueback Upload successful $resetvid"
+                     nl
+                     echo -e "The link to the pastebin is saved in: '$linklog'"
+                     nl
+                     echo -e "View at: $return_url" | tee -a "$linklog"
+                     nl
+                 else
+                    echo -e "$redback Upload failed $resetvid"
+                     echo -e "Upload the file manually: 'copy & paste' to"
+                     echo -e "https://paste.ubuntu.com/"
+                     nl
+                 fi
+             else
+                    echo -e "No connection to pastebin.ubuntu.com " | tee -a "$linklog"
+                    echo -e "Please copy the file $report to a USB and post "
+                    echo -e "from a computer that does have a working connection."
+                    echo -e "Upload the file manually: 'copy & paste' to"
+                    nl
+                    echo -e "https://paste.ubuntu.com/"
+             fi
+         fi
+    else
+        echo -e "$redback    The required package was not installed.    $resetvid"
+        nl
+        echo -e "Either rerun the script after installing curl, or"
+        echo -e "Upload the file manually: 'copy & paste' to"
+        nl
+        echo -e "https://paste.ubuntu.com/"
+        nl
+    fi
+}
+
+function PasterOld() ##* Currently in Test
  {
      # Provides curl upload of report with a progress bar. Called once by Main().
      target="https://paste.ubuntu.com"
