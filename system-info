@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 00.07-06, Script Date: 2021.09.09"
+version="Version: 00.07-06, Script Date: 2021.09.10"
 arg1=$1
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
@@ -93,7 +93,7 @@ function CheckPrerequisites()
     	gzip
     	mokutil
     	curl
-    	pasteebinit
+    	pastebinit
     	nc
     	wget
     	ls
