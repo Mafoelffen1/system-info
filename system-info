@@ -815,7 +815,7 @@ function Paster()
      ## Eval $paste_prog
      if [ $paste_prog -ne 0 ]
      then 
-         read -p "Do you want to upload the report file fo '$target'? (y/N) " ans
+         read -p "Do you want to upload the report file to '$target'? (y/N) " ans
          if [[ ${ans,} =~ ^[Yy]$ ]]
          then
              GetPingStatus "www.ubuntu.com"
