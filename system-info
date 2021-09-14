@@ -580,7 +580,7 @@ function GetOriginalInstallDate()
     # Makes best logical efforts.
     if [ $(sudo find /var/log/installer/ -type f | wc -l) -ne 0  ]
     then
-        installer_date=$(sudo find /var/log/installer/ -type f | -printf "%T+\n"   | sort| head -1 2> /dev/null )
+        installer_date=$(sudo find /var/log/installer/ -type f -printf "%T+\n"   | sort| head -1 2> /dev/null )
         installer_date="Original Installation Date:         ${setansi} ${installer_date%.*} $ransi"
     else
 #        sudo find / -maxdepth 1 -type d -printf "%T+ %p\n"| sort| head -1  # uncomment for debugging
@@ -711,8 +711,6 @@ function PasteCurl()
         --data "syntax=${PASTEBIN_SYNTAX:-text}" \
         --data "expiration=${PASTEBIN_EXPIRATION:-week}")
     check_paste=$?
-    echo -e "Response: $return_url"
-    echo -e "Exit code: $check_paste"
 }
 
 function PastePastebinit()
@@ -723,16 +721,12 @@ function PastePastebinit()
         -b "$target" \
         -t "$sname.txt")
     check_paste=$?
-    echo -e "Response: $return_url"
-    echo -e "Exit code: $check_paste"
 }
 
 function PasteWget()
 {
     return_url=$(wget --quiet -O- --post-data="$(cat $report)" 'termbin.com:9999' | tr '\0' '\n' )
     check_paste=$?
-    echo -e "Response: $return_url"
-    echo -e "Exit code: $check_paste"
 }
 
 function PasteNc()
@@ -745,8 +739,6 @@ function PasteNc()
     then
         return_url=$(cat $report | nc termbin.com 9999 | tr '\0' '\n')
         check_paste=$?
-        echo -e "Response: $return_url"
-        echo -e "Exit code: $check_paste"
     else
         echo -e "You skipped uploading to Pastebin."
         check_paste=1
@@ -776,7 +768,6 @@ function CheckPasterProgs()
 function DoPaste()
 {
     prog_here=$1
-    echo -e "Passed $prog_here"
     case "$prog_here" in
         1)
             PasteCurl
