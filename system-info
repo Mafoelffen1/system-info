@@ -711,6 +711,8 @@ function PasteCurl()
         --data "syntax=${PASTEBIN_SYNTAX:-text}" \
         --data "expiration=${PASTEBIN_EXPIRATION:-week}")
     check_paste=$?
+    #echo -e "Response: $return_url"
+    #echo -e "Exit code: $check_paste"
 }
 
 function PastePastebinit()
@@ -721,12 +723,16 @@ function PastePastebinit()
         -b "$target" \
         -t "$sname.txt")
     check_paste=$?
+    #echo -e "Response: $return_url"
+    #echo -e "Exit code: $check_paste"
 }
 
 function PasteWget()
 {
     return_url=$(wget --quiet -O- --post-data="$(cat $report)" 'termbin.com:9999' | tr '\0' '\n' )
     check_paste=$?
+    #echo -e "Response: $return_url"
+    #echo -e "Exit code: $check_paste"
 }
 
 function PasteNc()
@@ -739,6 +745,8 @@ function PasteNc()
     then
         return_url=$(cat $report | nc termbin.com 9999 | tr '\0' '\n')
         check_paste=$?
+        #echo -e "Response: $return_url"
+        #echo -e "Exit code: $check_paste"
     else
         echo -e "You skipped uploading to Pastebin."
         check_paste=1
@@ -756,7 +764,7 @@ function CheckPasterProgs()
     elif [ -e /usr/bin/wget ]
     then
         paste_prog=3;
-    elif [ -e /usr/bin/nc || -e /bin/nc ]
+    elif [ -e /usr/bin/nc ] || [ -e /bin/nc ]
     then
         paste_prog=4;
     else
@@ -768,6 +776,7 @@ function CheckPasterProgs()
 function DoPaste()
 {
     prog_here=$1
+    #echo -e "Passed $prog_here"
     case "$prog_here" in
         1)
             PasteCurl
@@ -808,7 +817,8 @@ function Paster()
  {
      # Provides an upload of report with a progress bar. Called once by Main().
      target="https://paste.ubuntu.com"
-     linklog="$HOME/system-info-link.log"
+     linklog="$HOME/${sname}-link.log"
+     #linklog="$HOME/system-info-link.log"
 
      echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
      CheckPasterProgs     
@@ -837,7 +847,7 @@ function Paster()
                  rm "$keep_spinning"
                  sleep 0.5
                  tput cnorm
-                 if [ $paste_done == 0 ]
+                 if $paste_done
                  then
                      echo -e "Uploaded Report: ${startt}:" >> "$linklog"
                      echo -e "$blueback Upload successful $resetvid"
