@@ -43,6 +43,7 @@ LANG=C
 # Set a pretty ANSI screen decoration for displaying the report onscreen
 blueback="\0033[1;37;44m"
 redback="\0033[1;37;41m"
+orangeback="\0033[1;33;43m"
 resetvid="\0033[0m"
 # Check boot mode
 boot_mode=$( [ -d /sys/firmware/efi ] && echo "UEFI Firmware mode" || echo "Legacy mode (alias CSM alias BIOS mode)" )
@@ -126,7 +127,8 @@ function CheckPrerequisites()
                 # If this missing, it is a variant for UEFI systems only. It does work on 18.04 where it was not default yet, and is 
                 # a useful option to see if there "is" a SecureBoot option in the BIOS, besides just what it is set at. This, during 
                 # tests, is afe to install on Legacy Ony BIOS systems and can be used to tell if the BIOS is such.
-                echo -e "$redback \"${Program}\" could not be found. $resetvid" 
+                echo -e "$orangeback \"${Program}\" could not be found. This program is suggested.$resetvid" 
+                echo -e "If this is older hardware that is 'Legacy Only BIOS', then this can be ignored."
                 check_mokutil=0;    # Set Flag to false and recheck in GetSb()
                 check_prog=0;
             else
@@ -139,7 +141,8 @@ function CheckPrerequisites()
     if [ "$check_prog" == 0 ]
     then
         nl
-        echo -e "Required basic Linux utilities not found."
+        echo -e "The Script 'system-info' uses  some very basic Linux utilities. "
+        echo -e "Some of these utilities were not found."
         ans=
         while [ "$ans" != "e" ] && [ "$ans" != "c" ]
         do
@@ -537,6 +540,38 @@ function GetGraphicsEnv()
 
 function GetRepositories()
 {
+    # Gets Repository Information. Called once by Writer(). ** TODO Proposed
+    echo -e "${setansi}---------- Repository Information:$ransi"
+    nl
+    sources=$(grep -v '#' /etc/apt/sources.list | sed -e /^$/d )
+    # sourcesd=$(grep -v '#' /etc/apt/sources.list.d/* | sed -e /^$/d)
+    echo -e "Sources List:"
+    echo -e "$sources"
+    nl
+    file_path="/etc/apt/sources.list.d/"
+    if [ $(find $file_path -type f 2> /dev/null | wc -l) -ne 0 ] 
+    then  
+        echo -e "Sources List from SourcesD:"
+        sourcesd_files=$(find $file_path -type f 2> /dev/null )
+        for list_file in $sourcesd_files
+        do
+            lines=$(grep -v '#' $list_file | sed -e /^$/d )
+            line_count=$( wc -l <<< $lines )
+            if [ $line_count -ne 0 ]
+            then
+                echo -e "$list_file:"
+                echo -e "$lines"
+            else
+                echo -e "$list_file:"
+                echo -e "File had no entries."
+            fi
+        done
+        nl
+    fi
+}
+
+function GetRepositoriesOld()
+{
     # Gets Repository Informations. Called once by Writer().
     echo -e "${setansi}---------- Repository Information:$ransi"
     nl
@@ -546,7 +581,7 @@ function GetRepositories()
     echo -e "$sources"
     nl
     if [ $(find /etc/apt/sources.list.d/ -type f 2> /dev/null | wc -l) -ne 0 ]
-    then
+    then  # prevent showing files that have commented out lines / empty
         sourcesd=$(grep -v '#' /etc/apt/sources.list.d/* | sed -e /^$/d \
          | sed 's/:deb/:\n  deb/')
         echo -e "Sources List from SourcesD:"
