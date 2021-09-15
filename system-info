@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 00.07-06, Script Date: 2021.09.10"
+version="Version: 00.07-07, Script Date: 2021.09.15"
 arg1=$1
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
