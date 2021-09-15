@@ -34,6 +34,7 @@
 ########################################################################
 # Versioning
 version="Version: 00.07-08, Script Date: 2021.09.15"
+md5_sum=$(md5sum ./$sname)
 arg1=$1
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
@@ -74,16 +75,45 @@ function CheckRoot()
         echo -e "$redback Do not run this script with sudo or as root$resetvid"
         exit
     else
-        sudo echo "Running Script: ${0##*/} ..."
+        sudo echo "Running Script: ${sname} $version"
     fi
 }
 
 function CheckVersion()
 {
-    # Versioning: At the commandline: [<ScriptName> -v] returns <VersionInfo>, then exits. Called by Main().
+    # Version or Help Panel. Called by Main().
     if [[ "$arg1" == "-v" ]]
     then
+        # Versioning: At the commandline: [<ScriptName> -v] returns <VersionInfo>, then exits. 
         echo -e "$version";
+        exit;
+    elif [[ "$arg1" == "-h" ]] || [[ "$arg1" == "--help" ]]
+    then
+        # Help Panel: At the commandline: [<ScriptName> -h or --help] returns this usage panel, then exits. 
+        echo -e "md5sum: "$(md5sum ./$sname | sed 's/.\.\/.*//g' )
+        nl
+        echo -e "Description: The Ubuntu Forums \"system-info\" script queries the users "
+        echo -e "computer and prepares a report, so that Ubuntu Forums Community Members "
+        echo -e "can see what they are recommending solutions for."
+        nl
+        echo -e "Usage:    ./${sname} <option> "
+        nl
+        echo -e "Options: "
+        echo -e "    -v    Returns Version Information and exits."
+        echo -e "    -h or --help    Displays this help screen, then exits."
+        nl
+        echo -e "Asks the user 2 questions to describe the problem they are having, then "
+        echo -e "creates $sname.txt in their Home directrory."
+        nl
+        echo -e "Will check programs used by this script, and give the user the option to "
+        echo -e "quit to install anything it finds missing. Will give the user the option "
+        echo -e "to upload the report to a pastebin and displays the URL of that to add "
+        echo -e "their post on Ubuntu Forums."
+        nl
+        echo -e "Or they can manually paste the report within code tags in a post or to a "
+        echo -e "pastebin. Or added as a text attahment to a post."
+        nl
+        echo -e "We have tried to keep this safe and simple to use."
         exit;
     fi
 }
