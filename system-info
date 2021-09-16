@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 00.07-08, Script Date: 2021.09.15"
+version="Version: 01.00-00, Script Date: 2021.09.15"
 md5_sum=$(md5sum ./$sname)
 arg1=$1
 # Set Report filename and path to
