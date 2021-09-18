@@ -34,7 +34,7 @@
 ########################################################################
 # Versioning
 version="Version: 01.00-00, Script Date: 2021.09.15"
-md5_sum=$(md5sum ./$sname)
+#md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
 # Set Report filename and path to
