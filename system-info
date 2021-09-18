@@ -122,7 +122,7 @@ function CheckArgs()
         exit;
     elif [[ "$arg1" == "-s" ]] || [[ "$arg1" == "--show" ]]
     then
-        if [ arg2 -ge -1 ] && [ arg2 -le 5 ]
+        if [ $arg2 -ge -1 ] && [ $arg2 -le 5 ]
         then 
             verbosity=$arg2
         else
