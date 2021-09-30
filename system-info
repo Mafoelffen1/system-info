@@ -177,6 +177,7 @@ function CheckPrerequisites()
     do
         if [ $(type ${Program} > /dev/null 2>&1 ; echo $?) -ne 0 ]
         then
+            echo -e " --- Some Programs Were Missing --- "
             if [[ "$Program" == "mokutil" ]]
             then    # If not 'Here' condition
                 # If this missing, it is a variant for UEFI systems only. It does work on 18.04 where it was not default yet, and is 
@@ -191,6 +192,7 @@ function CheckPrerequisites()
                 echo -e "$Program is not installed."
                 check_prog=0;
             fi
+            echo -e ' -------------------------------- "
         fi
     done
 
@@ -352,7 +354,7 @@ function GetSb()
         echo -e "\tthis information, please install 'mokutil' and rerun script."
     else
         # For Legacy only BIOS, returns error: "EFI variables are not supported on this system"
-        error_mokutil=$(mokutil --sb-state 2>&1)
+        error_mokutil=$(mokutil --sb-state 2>&1 )
         if [[  "$error_mokutil" == *"EFI variables"*  ]]
         then
             echo -e "$error_mokutil"
@@ -363,18 +365,20 @@ function GetSb()
                 echo -e "\tbut package mokutil was not installed. If you would like to check"
                 echo -e "\tthis information, please install 'mokutil' and rerun script."                
         else
-            sb_state=$(mokutil --sb-state)
+            sb_state=$(mokutil --sb-state 2>&1 )
             debug "sb_state: $sb_state" 1
             if [[ $sb_state == "Failed to read SecureBoot" ]]
             then
-                sb_disabled="SecureBoot: disabled"
-                printf "%-20s %s\n" ${sb_disabled/ /: }
+                sb_disabled="SecureBoot: Disabled"
+                #printf "%-20s %s\n" ${sb_disabled/ /: }
+                echo -e "$sb_disabled"
             else
                 # These are the three known messages returned from UEFI
                 # This system doesn't support Secure Boot
                 # Secure Boot is enabled
                 # Failed to read SecureBoot
-                printf "%-20s %s\n" ${sb_state/ /: }
+                #printf "%-20s %s\n" ${sb_state/ /: }
+                echo -e "$sb_state"
             fi
         fi
         nl
