@@ -229,7 +229,7 @@ function CheckPrerequisites()
             elif [[ "$Program" == "pastebinit" ]] || [[ "$Program" == "wget" ]] || [[ "$Program" == "curl" ]] || [[ "$Program" == "nc" ]]
                 then
                 check_prog=0;
-                check_paster=$($check_paster+1);
+                check_paster=$((check_paster+1));
                 missing_paster_progs="$missing_paster_progs$Program, "
                 missing_programs="$missing_programs\n$Program"
             else
@@ -267,7 +267,7 @@ function CheckPrerequisites()
             if [[ $ans =~ ^[Ee]$ ]]
             then
                 echo -e "Please install the missing programs listed above before rerunning script." 
-                exit
+                exit 1
             elif [[ ${ans,} =~ ^[Cc]$ ]]
             then
                 echo -e "Some task(s) will not work, but I'll do the best possible, continuing ..." 
@@ -518,7 +518,7 @@ function GetInternetStatus()
         echo -e "Connected to Internet with DNS"
     else 
         echo -e "Cannot reach internet by DNS"
-        ping -c 1 8.8.8.8 > /dev/null
+        ping -c 1 8.8.8.8 &> /dev/null
         pingStatus=$?
         if pingStatus [ $pingStatus == 0 ]
         then
@@ -533,7 +533,7 @@ function GetInternetStatus()
 function GetPingStatus()
 {
     # Takes arg as IP or URL. Returns psuedo boolean $return_status. Called twice (by Paster() and GetInternetStatus()).
-    ping -c 1 $1 > /dev/null
+    ping -c 1 $1 &> /dev/null
     pingStatus=$?
     if [ $pingStatus == 0 ]
     then 
@@ -659,7 +659,7 @@ function GetGraphicsEnv()
     if [ $DESKTOP_SESSION ]
     then
         echo -e "The Current Desktop Session is: $DESKTOP_SESSION "
-        xmode=$(xrandr -q | egrep --color=never -e 'Screen' -e 'connected primary')
+        xmode=$(xrandr -q | egrep --color=never -e 'Screen' -e 'connected ')
         echo -e "The Current X Desktop Information Details from 'xrandr' are: "
         echo -e "$xmode" 
     else
