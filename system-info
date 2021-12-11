@@ -510,7 +510,7 @@ function GetNetworkingInfo()
 function GetInternetStatus()
 {
     # Verifies ping status and relsolv. Called once by GetNetworkingInfo().
-    ping -c 1 www.google.com > /dev/null
+    ping -c 1 www.google.com &> /dev/null
     pingStatus=$?
     echo -e "  --- Internet Connection Status from 'ping [various addresses]' --- "
     if [ $pingStatus == 0 ]
@@ -520,7 +520,7 @@ function GetInternetStatus()
         echo -e "Cannot reach internet by DNS"
         ping -c 1 8.8.8.8 &> /dev/null
         pingStatus=$?
-        if pingStatus [ $pingStatus == 0 ]
+        if [ $pingStatus == 0 ]
         then
             echo -e "Can reach the internet without DNS"
         else
@@ -659,9 +659,14 @@ function GetGraphicsEnv()
     if [ $DESKTOP_SESSION ]
     then
         echo -e "The Current Desktop Session is: $DESKTOP_SESSION "
-        xmode=$(xrandr -q | egrep --color=never -e 'Screen' -e 'connected ')
-        echo -e "The Current X Desktop Information Details from 'xrandr' are: "
-        echo -e "$xmode" 
+        xmode=$(xrandr -q &> /dev/null | egrep --color=never -e 'Screen' -e 'connected ')
+        if [ $? -eq 1 ]
+        then 
+            echo -e "'xrandr' could not determine resolution."
+        else
+            echo -e "The Current X Desktop Information Details from 'xrandr' are: "
+            echo -e "$xmode" 
+        fi
     else
         echo -e "The Current Desktop Session is: <Not Populated> " 
     fi
@@ -930,7 +935,22 @@ function MessageLess()
     echo -e "at the lower left of your screen,"
     echo -e "$blueback quit from 'less' to continue the script with the <q> key. $resetvid"
     nl
+    SensitiveDataWarning
  }
+ 
+function SensitiveDataWarning () {
+    echo -e "$redback --- SENSITIVE DATA WARNING --- $resetvid "
+    nl
+    echo -e "This Report is prepared in two versions- "
+    nl
+    echo -e "The'Eyes Only' version, only exists temporarily in memory, and is viewed onscreen by 'less'. The "
+    echo -e "report that is viewed by 'less' onscreen contains 'sensitive data' that should not be posted "
+    echo -e "publically. "
+    nl
+    echo -e "The Final Report 'file' is saved to disk as a file. The Final Report is sanitized, filtered,"
+    echo -e "with the sensitive data removed. It is safe to post online publically. "
+    nl
+}
  
 function ReportFooter()
 {
