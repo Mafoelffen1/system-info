@@ -943,12 +943,13 @@ function SensitiveDataWarning () {
     nl
     echo -e "This Report is prepared in two versions- "
     nl
-    echo -e "The'Eyes Only' version, only exists temporarily in memory, and is viewed onscreen by 'less'. The "
-    echo -e "report that is viewed by 'less' onscreen contains 'sensitive data' that should not be posted "
-    echo -e "publically. "
+    echo -e "The 'Your Eyes Only' version, only exists temporarily in memory, and is "
+    echo -e "viewed onscreen by 'less'. The report that is viewed by 'less' onscreen "
+    echo -e "contains 'sensitive data' that should NOT be posted publically. "
     nl
-    echo -e "The Final Report 'file' is saved to disk as a file. The Final Report is sanitized, filtered,"
-    echo -e "with the sensitive data removed. It is safe to post online publically. "
+    echo -e "The Final Report 'file' is saved to disk as a file. The Final Report is "
+    echo -e "sanitized, filtered, with the sensitive data removed. It is safe to post "
+    echo -e "online publically. "
     nl
 }
  
