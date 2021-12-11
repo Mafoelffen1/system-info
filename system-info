@@ -220,8 +220,9 @@ function CheckPrerequisites()
                 # a useful option to see if there "is" a SecureBoot option in the BIOS, besides just what it is set at. This, during 
                 # tests, is safe to install on Legacy Only BIOS systems and can be used to tell if the BIOS is such.
                 echo -e "$faintvid \"${Program}\" Could not be found. This program is suggested.$resetvid" 
-                echo -e "$faintvid If this is older hardware that is 'Legacy Only BIOS', then this can be ignored.$resetvid"
-                echo -e "$faintvid The report will still run without it. It will just not be able to answer one question. $resetvid"
+                echo -e "$faintvid If this is older hardware that is 'Legacy Only BIOS', then this can be $resetvid"
+                echo -e "$faintvid ignored. The report will still run without it. It will just not be able $resetvid"
+                echo -e "$faintvid to answer one question. $resetvid"
                 check_mokutil=0;    # Set Flag to false and recheck in GetSb()
                 check_prog=0;
                 missing_programs="$missing_programs\n$Program"
@@ -247,11 +248,12 @@ function CheckPrerequisites()
         echo -e "The Script 'system-info' uses some very basic Linux utilities. "
         echo -e "Some of these utilities were not found."
         nl
-        echo -e "The report will still run without them. It will just not answer related questions."
-        echo -e "Some of that information may be related to the diagnosis of your installed system."
-        echo -e "If missing utilities may have answered your specified problem, you may "
-        echo -e "be asked by a 'Ubuntu Forums Member' supporting you if a program was missing, and "
-        echo -e "if you could install it to answer that related question."
+        echo -e "The report will still run without them. It will just not answer related "
+        echo -e "questions. Some of that information may be related to the diagnosis of "
+        echo -e "your installed system. If missing utilities may have answered your "
+        echo -e "specified problem, you may be asked by a 'Ubuntu Forums Member' supporting "
+        echo -e "you if a program was missing, and if you could install it to answer that "
+        echo -e "related question."
         nl
         CheckPaster
         echo -e "Some of these utilities are not default installed utilities to all Editions, "
