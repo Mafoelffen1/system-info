@@ -894,7 +894,7 @@ function GetUserInstalled ()
     if [ -f /var/log/installer/initial-status.gz ]
     then 
         # Get the list of default installed packages at initial installation.
-        gzip -dc /var/log/installer/initial-status.gz | \
+        gzip -dc /var/log/installer/initial-status.gz 2> /dev/null | \
             sed -n 's/^Package: //p' | \
             sort -u > ./DefaultInstalled.tmp
     else 
