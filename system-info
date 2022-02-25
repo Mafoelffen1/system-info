@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 01.00-03, Script Date: 2022.02.09"
+version="Version: 01.00-04, Script Date: 2022.02.24"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -687,13 +687,20 @@ function GetGraphicsEnv()
     else
         echo "The Current Display Manager is: <Not Configured>" 
     fi
-    desktop_theme=$(gsettings get org.gnome.desktop.interface gtk-theme)
-    if [ $desktop_theme ]
+    # This change is to adapt to Server Edition, which for some reason, can have a gsettings setting.
+    get_console_desktop=$([ -d /usr/share/xsessions/ ] && echo "Desktop" || echo "Console")
+    if [ "$get_console_desktop" == "Desktop" ]
     then
-        echo -e "The Current Desktop Theme: $desktop_theme" 
+        desktop_theme=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        if [ $desktop_theme ]
+        then
+            echo -e "The Current Desktop Theme: $desktop_theme" 
+        else
+            echo -e "The Current Desktop Theme: <None Configured>" 
+        fi 
     else
-        echo -e "The Current Desktop Theme: <None Configured>" 
-    fi 
+        echo -e "The Current Desktop Theme: Is not set,this is Console Based." 
+    fi   
     virt_ttys=$(ps -e | awk '$2 ~ /^tty/ && $2 !~ /^ttyS/ {print "\t" $2 "\t" $4}')
     echo -e "The Current Virtual TTYs being used are:" 
     echo -e "\tTTY#\tUsed By" 
