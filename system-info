@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 01.00-19, Script Date: 2022.06.21"
+version="Version: 02.00-00, Script Date: 2022.06.22"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -52,6 +52,7 @@ boot_mode=$( [ -d /sys/firmware/efi ] && echo "UEFI Firmware mode" || echo "Lega
 boot_status=$( [ -d /sys/firmware/efi ] );    # Use boot mode as boolean test
 less_status="less"
 up_status= "true"
+debian_branch=0
 # Report timestamp
 startt="$(date '+%F  %T %Z (%z)')"
 # LST Name for package calc
@@ -184,6 +185,55 @@ function CheckTypeError() {
    fi
 }
 
+function CheckDebianBranch()
+{
+    # Check if OS is in Debian Branch
+    if [ -f /etc/debian_version ]
+    then
+        debian_branch=0
+    else
+        debian_branch=1
+    fi
+}
+
+function CheckUbuntuFlavor()
+{
+    # Check if OS is an Ubuntu Flavor
+    ubuntu_found=$(grep -m 1 -Ei 'untu' /etc/*release)
+    #echo -e "${#ubuntu_found[@]}"
+
+    if [[ "$ubuntu_found" == *"untu"* ]]
+    then
+        ubuntu_flavor=0
+    else
+        ubuntu_flavor=1
+    fi
+}
+
+function GetReleaseDescription()
+{
+   # Alternate Information method to 
+   #    echo -e "The current release description is: ${setansi} $(lsb_release -sd) $ransi"
+   # called from GetOtherDetails()
+   
+   if [[ "$debian_branch" == "0" ]]
+   then
+       os_name=$(lsb_release -sd)
+   else
+       os_name=$(egrep -e "PRETTY_NAME" /etc/os-release | \
+           sed 's/PRETTY_NAME=//g' | \
+           sed 's/\"//g')
+       echo -e "The current release description is: ${setansi} $os_name $ransi"
+   fi
+}
+
+function GetOsNameAlt()
+{
+    os_name=$(egrep -e "PRETTY_NAME" /etc/os-release | \
+        sed 's/PRETTY_NAME=//g' | \
+        sed 's/\"//g')
+}
+
 function CheckPrerequisites()   
 {
     ## Check if all necessary programs are available. Called once by Main().
@@ -208,6 +258,7 @@ function CheckPrerequisites()
     	nc
     	wget
     	ls
+    	lsb_release
     	rm
     	sed
     	ping
@@ -223,11 +274,16 @@ function CheckPrerequisites()
     	who'
 
     # Programs that are in /usr/sbin or /sbin.
-    Programs_SBIN='fdisk
+    Programs_SBIN='
+        fdisk
     	lshw'
 
     check_prog=1;
     check_mokutil=1;
+    check_lshw=0;
+    
+    CheckDebianBranch
+    CheckUbuntuFlavor
 
     for Program in ${Programs} ${Programs_SBIN} 
     do
@@ -256,16 +312,48 @@ function CheckPrerequisites()
                 check_paster=$((check_paster+1));
                 missing_paster_progs="$missing_paster_progs$Program, "
                 missing_programs="$missing_programs\n$Program"
-           # To take care of a permssions check issue on Debian, 2022.06.15
+            # To take care of a permssions check issue on Debian, 2022.06.15
             elif [[ "$Program" == "fdisk" ]]
             then
-                LSB_ID=$(lsb_release -si)
-                if [[ "$LSB_ID" == "Debian" ]]
+                #LSB_ID=$(lsb_release -si)
+                if [[ "$debian_branch" == "0" ]]
                 then
                     # Set Debian as an exception
                     check_prog=0;
-                    debug "System is $LSB_ID" 1
+                    debug "System is Debian" 1
                 fi
+            elif [[ "$Program" == "lsb_release" ]]
+            then
+                # Is not Debian Branch? call CheckDebianBranch() before this check...
+                if [[ "$debian_branch" == "1" ]]
+                then
+                    # Set/call alternte methods to retrieve System information
+                    GetOsNameAlt
+                    #check_prog=0;
+                    debug "System is not Debian Branch" 1
+                fi
+            elif [[ "$Program" == "ubuntu-drivers" ]]
+            then
+                # Check if it is Ubuntu Flavor, else not needed
+                # placeholder
+                if [[ "$ubuntu_flavor" == "1" ]]
+                then
+                    check_prog=0;
+                    echo -e "'ubuntu-drivers' is not installed, but is not an Ubuntu Flavor, so ignore."
+                fi
+            elif [[ "$Program" == "dpkg" ]]
+            then
+                # Check if Debian Branch, else not needed
+                if [[ "$debian_branch" == "1" ]]
+                then
+                    check_prog=0;
+                    echo -e "'dpkg' is not installed, but ignore, as this is not a Debian Branch."
+                fi
+            elif [[ "$Program" == "lshw" ]]
+            then
+                check_lshw=1
+                check_prog=0;
+                echo -e "'lshw' is not installed, but will run with less details."
             else
                 echo -e "'$Program' is not installed."
                 check_prog=0;
@@ -382,26 +470,34 @@ function GetCPU()
     # Gets CPU Information. Called once by GetMachineInfo().
     echo -e "${setansi}---------- General Computer Specifications:$ransi"
     nl
-    echo -e "  --- Computer/CPU Information from 'lshw -C cpu' --- "
-    $lshw_cmd -C cpu \
-        | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
-        | sed -e 's/^ *\*-cpu/\*-Cpu/g' \
-        | sed '/Capabilities/ s/ *Capabilities/  Capabilities/' \
-        | fold -sw 71 \
-        |sed -e 's/^[^ ]/           &/' \
-        -e 's/ *\*-Cpu/\*-Cpu/g' \
-        -e 's/ Capabilities/   Capabilities/' \
-        -e 's/       /    /' \
-        -e '/Capabilities/ s/^[^ ]/          &/'
-    nl
-    $lshw_cmd \
-        | sed '/*-core/,$ d' \
-        | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
-        | sed -e 's/ *Configuration/ Configuration/' \
-        -e '/Configuration/ s/ [^ ]*=[^ ]*/\n&/g' \
-        -e 's/Configuration/   Configuration/' \
-        | sed 's/^ [^ ]/       &/'
-    nl
+    # Do not call $lshw_cmd if 'lshw' is not installed... 
+    if [[ "$check_lshw" == "0" ]]
+    then
+        echo -e "  --- Computer/CPU Information from 'lshw -C cpu' --- "
+        $lshw_cmd -C cpu \
+            | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
+            | sed -e 's/^ *\*-cpu/\*-Cpu/g' \
+            | sed '/Capabilities/ s/ *Capabilities/  Capabilities/' \
+            | fold -sw 71 \
+            |sed -e 's/^[^ ]/           &/' \
+            -e 's/ *\*-Cpu/\*-Cpu/g' \
+            -e 's/ Capabilities/   Capabilities/' \
+            -e 's/       /    /' \
+            -e '/Capabilities/ s/^[^ ]/          &/'
+         nl
+        $lshw_cmd \
+            | sed '/*-core/,$ d' \
+            | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
+            | sed -e 's/ *Configuration/ Configuration/' \
+            -e '/Configuration/ s/ [^ ]*=[^ ]*/\n&/g' \
+            -e 's/Configuration/   Configuration/' \
+            | sed 's/^ [^ ]/       &/'
+        nl
+    else
+        echo -e "  --- Computer/CPU Information from '/proc/cpuinfo' --- "
+        egrep -m 1 -Ei 'model name' /proc/cpuinfo | sed 's/model name.*:.//g'
+        nl
+    fi
 }
 
 function GetDmi()
@@ -713,22 +809,46 @@ function GetStorageControllers() {
 function GetGraphicsEnv() 
 {
     # Gets Graphics Layer Information. Called once by Writer().
-    echo -e "${setansi}---------- Video Details from 'lshw':$ransi"
-    nl
-    #lshw_data=$(sudo lshw -C video )
-    lshw_data=$(sudo lshw -C video \
-        | sed -e 's/ *resources/resources/' \
-        -e '/resources/ s/ [^ ]*:[^ ]*/ \n&/g' \
-        -e 's/resources:/       resources:/g' \
-        | sed 's/^ [^ ]/          &/' )
-    
-    if [ "$lshw_data" == "" ]
+    # Do not call $lshw_cmd if lshw is not installed...
+    if [[ "$check_lshw" == "0" ]]
     then
-        echo -e "No conventional GPU detected. May be using a Frame Buffer."
+    
+        echo -e "${setansi}---------- Video Details from 'lshw':$ransi"
+        nl
+        #lshw_data=$(sudo lshw -C video )
+        lshw_data=$(sudo lshw -C video \
+            | sed -e 's/ *resources/resources/' \
+            -e '/resources/ s/ [^ ]*:[^ ]*/ \n&/g' \
+            -e 's/resources:/       resources:/g' \
+            | sed 's/^ [^ ]/          &/' )
+    
+        if [ "$lshw_data" == "" ]
+        then
+           echo -e "No conventional GPU detected. May be using a Frame Buffer."
+        else
+            echo -e "$lshw_data"
+        fi
+        nl
     else
-        echo -e "$lshw_data"
+        # Use alternate method to display GPU info
+        echo -e "${setansi}---------- Video Details from 'lspci':$ransi"
+        #lspci | grep -i vga | sed 's/[0-9][0-9]:[0-9][0-9]\.[0-9] //g'
+        gpu_list=$(lspci | grep --color=never -i -e 'VGA' | \
+            awk '{print $1}')
+        # Modified for devices which have no formal GPU's
+        if [ ! -z "$gpu_list" ]
+        then
+            # Parse through list )array) and show detailed information on each
+            for gpu in ${gpu_list}
+            do
+                sudo lspci -s $gpu -vv
+                nl
+            done
+        else
+            echo -e "No formal GPU found. Check in other places fro a framebuffer."
+            nl
+        fi
     fi
-    nl
     echo -e "   --- Graphics Environment Continued from 'various graphics ENVs' ----" 
     if [ $XDG_CURRENT_DESKTOP ] 
     then 
@@ -788,31 +908,41 @@ function GetGraphicsEnv()
 function GetRepositories()
 {
     # Gets Repository Information. Called once by Writer().
-    echo -e "${setansi}---------- Repository Information from '/etc/apt/sources.list and etc/apt/sources.list.d/':$ransi"
-    nl
-    sources=$(grep -v '#' /etc/apt/sources.list | sed -e /^$/d )
-    # sourcesd=$(grep -v '#' /etc/apt/sources.list.d/* | sed -e /^$/d)
-    echo -e "Sources List:"
-    echo -e "$sources"
-    nl
-    file_path="/etc/apt/sources.list.d/"
-    if [ $(find $file_path -type f 2> /dev/null | wc -l) -ne 0 ] 
-    then  
-        echo -e "Sources List from SourcesD:"
-        sourcesd_files=$(find $file_path -type f 2> /dev/null )
-        for list_file in $sourcesd_files
-        do
-            lines=$(grep -v '#' $list_file | sed -e /^$/d )
-            #line_count=$( wc -l <<< "$lines" )
-            if [ "$lines" != "" ]
-            then
-                echo -e "$list_file:"
-                echo -e "$lines"
-            else
-                echo -e "$list_file:"
-                echo -e "File had no entries."
-            fi
-        done
+    # 	Method only works in Debian Branch. Check for Debian Branch first...
+    debug "$debian_branch" 1
+    if [[ "$debian_branch" == "0" ]]
+    then    
+        echo -e "${setansi}---------- Repository Information from '/etc/apt/sources.list and etc/apt/sources.list.d/':$ransi"
+        nl
+        sources=$(grep -v '#' /etc/apt/sources.list | sed -e /^$/d )
+        # sourcesd=$(grep -v '#' /etc/apt/sources.list.d/* | sed -e /^$/d)
+        echo -e "Sources List:"
+        echo -e "$sources"
+        nl
+        file_path="/etc/apt/sources.list.d/"
+        if [ $(find $file_path -type f 2> /dev/null | wc -l) -ne 0 ] 
+        then  
+            echo -e "Sources List from SourcesD:"
+            sourcesd_files=$(find $file_path -type f 2> /dev/null )
+            for list_file in $sourcesd_files
+            do
+                lines=$(grep -v '#' $list_file | sed -e /^$/d )
+                #line_count=$( wc -l <<< "$lines" )
+                if [ "$lines" != "" ]
+                then
+                    echo -e "$list_file:"
+                    echo -e "$lines"
+                else
+                    echo -e "$list_file:"
+                    echo -e "File had no entries."
+                fi
+           done
+           nl
+        fi
+    else
+        echo -e "${setansi}---------- Repository Information"
+        echo -e "The repository method written in this script is only for Debian Branch."
+        echo -e "This system is not derived from a Debian Branch"
         nl
     fi
 }
@@ -822,21 +952,15 @@ function GetOtherDetails()
     # Gets Other General Details. Gets called once by Writer().
     echo -e "${setansi}---------- Other Details from 'Various':$ransi"
     echo -e "The current kernel version is:      ${setansi} $(uname -r) $ransi"
-    echo -e "The current release description is: ${setansi} $(lsb_release -sd) $ransi"
+    GetReleaseDescription
     GetOriginalInstallDate
     GetInstallMedia
     GetDistUpgradeDate
     nl
-    GetHweRange
-    if [ ! -z $LTS_PKG ]
-    then
-        GetHweKernels
-        CheckHwe
-    else
-        echo -e "System tested is either not Ubuntu or is an Ubuntu EOS release version."
-    fi
-    CheckIfCertifiedHardwarePlatform
+    GetHweInfo
     GetUserInstalled
+    GetSnapInstalled
+    GetFlatpakInstalled
     echo -e "Currently logged in User(s):"
     who -H
     nl
@@ -913,6 +1037,33 @@ function GetDistUpgradeDate()
     else
         echo -e "Do-Release-Upgrade Date: This system may have not had a 'Release Upgrade' through 'do-release-upgrade'"
     fi
+}
+
+function GetHweInfo()
+{
+    # Get HWE information safely. Only call if it is a flavor of Ubuntu
+    # Check if in Debian Branch
+    if [[ "$debian_branch" == "0" ]]
+    then
+        # Make sure it is a flavor of Ubuntu
+        if [[ "$ubuntu_flavor" == "0" ]]
+        then
+            GetHweRange
+            if [ ! -z $LTS_PKG ]
+            then
+                GetHweKernels
+                CheckHwe
+                CheckIfCertifiedHardwarePlatform
+            fi
+        else
+            echo -e "System tested is Debian Branch, but is not an Ubuntu or an Ubuntu flavor."
+            nl
+        fi
+    else
+        echo -e "System tested is either not Ubuntu or is an Ubuntu EOS release version."
+        nl
+    fi
+
 }
 
 function GetHweRange() {
@@ -1025,36 +1176,99 @@ function CheckIfCertifiedHardwarePlatform()
 
 function GetUserInstalled ()
 {
-    ## Get a list of User Installed Packages
-    manually_installed=$(mktemp /tmp/ManuallyInstalled-XXXXX)
-    default_installed=$(mktemp /tmp/DefaultInstalled-XXXXX)
-    user_installed=$(mktemp /tmp/UserInstalled-XXXXX)
-    
+    ## Get a list of User Installed Packages 
+    # This only works for Debian Branch...
+        
     echo -e "   --- User Installed Package List:"
-    # Use apt-mark to list all packages marked as manually installed. 
-    apt-mark showmanual | sort -u > $manually_installed
-    # Check to see if defualt installed list exists
-    # for prebuilt system images, it does not exist
-    if [ -f /var/log/installer/initial-status.gz ]
-    then 
-        # Get the list of default installed packages at initial installation.
-        gzip -dc /var/log/installer/initial-status.gz 2> /dev/null | \
-            sed -n 's/^Package: //p' | \
-            sort -u > $default_installed
-    else 
-        touch $default_installed
+    # check if Debian Branch. Otherwise 'apt-mark' will not be found...
+    if [[ "$debian_branch" == "0" ]]
+    then    
+        manually_installed=$(mktemp /tmp/ManuallyInstalled-XXXXX)
+        default_installed=$(mktemp /tmp/DefaultInstalled-XXXXX)
+        user_installed=$(mktemp /tmp/UserInstalled-XXXXX)
+        # Use apt-mark to list all packages marked as manually installed. 
+        apt-mark showmanual | sort -u > $manually_installed
+        # Check to see if defualt installed list exists
+        # for prebuilt system images, it does not exist
+        if [ -f /var/log/installer/initial-status.gz ]
+        then 
+            # Get the list of default installed packages at initial installation.
+            gzip -dc /var/log/installer/initial-status.gz 2> /dev/null | \
+                sed -n 's/^Package: //p' | \
+                sort -u > $default_installed
+        else 
+            touch $default_installed
+        fi
+        # Use compare, to exclude those defaults that are unique, AND exclude defaults 
+        # that are presently marked as manually installed. (Those 'may' have been changed.)  
+        comm -23 $manually_installed $default_installed > $user_installed
+        # Print the list in two columns
+        awk 'NF' $user_installed #\ Removed 2022.03.10 to turn to one column
+        #| pr -2T  # You can remove the pr filter on this to keep output in a single column...
+        nl # Add newline in report
+        # Remove the temporary files
+        rm -f $manually_installed
+        rm -f $default_installed
+        rm -f $user_installed
+    else
+        echo -e "The system tested is not in the Debian Branch. "
+        echo -e "The method written in this script is for Debian Branch conventions."
+        nl
     fi
-    # Use compare, to exclude those defaults that are unique, AND exclude defaults 
-    # that are presently marked as manually installed. (Those 'may' have been changed.)  
-    comm -23 $manually_installed $default_installed > $user_installed
-    # Print the list in two columns
-    awk 'NF' $user_installed #\ Removed 2022.03.10 to turn to one column
-    #| pr -2T  # You can remove the pr filter on this to keep output in a single column...
-    nl # Add newline in report
-    # Remove the temporary files
-    rm -f $manually_installed
-    rm -f $default_installed
-    rm -f $user_installed
+}
+
+function GetSnapInstalled()
+{
+    ## Get a list of Installed Snap Packages
+    echo -e "   --- Installed Snap Package List:"
+    snap_list=""
+    snap_list=$(snap list 2>&1)
+    snap_exit=$?
+    if [[ "$snap_exit" == "0" ]]
+    then       
+        snap_list=$(snap list | awk '{print $1}' | grep -v 'Name')
+        #debug "${#snap_list[@]}" 1
+        
+        if [ "$snap_list" == "" ] 
+        then
+            echo -e "No Snap Packages Installed"
+        else
+            for snap_package in "${snap_list}"
+            do 
+                echo "$snap_package"
+            done
+        fi
+    else
+        echo -e "Snap is not installed"
+    fi
+    nl
+}
+
+function GetFlatpakInstalled()
+{
+    ## Get a list of Installed Flatpak Packages
+    echo -e "   --- Installed Flatpak Package List:"
+    flatpak_list=""
+    flatpak_list=$(flatpak list 2>&1)
+    flatpak_exit=$?
+    if [[ "$flatpak_exit" == "0" ]]
+    then       
+        flatpak_list=$(flatpak list | awk '{print $1}' | grep -v 'Name')
+        #debug "${#flatpak_list[@]}" 1
+        
+        if [ "$flatpak_list" == "" ] 
+        then
+            echo -e "No Flatpak Packages Installed"
+        else
+            for flatpak_package in "${flatpak_list}"
+            do 
+                echo "$flatpak_package"
+            done
+        fi
+    else
+        echo -e "Flatpak is not installed"
+    fi
+    nl
 }
 
 function GetLiveCD() {
