@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00, Script Date: 2022.06.22"
+version="Version: 02.00-00, Script Date: 2022.06.23"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -219,19 +219,15 @@ function GetReleaseDescription()
    if [[ "$debian_branch" == "0" ]]
    then
        os_name=$(lsb_release -sd)
+       debug "Got release description from 'lsb_release'." 1
    else
        os_name=$(egrep -e "PRETTY_NAME" /etc/os-release | \
            sed 's/PRETTY_NAME=//g' | \
            sed 's/\"//g')
-       echo -e "The current release description is: ${setansi} $os_name $ransi"
+      debug "Got release description from 'os-release' file" 1
    fi
-}
-
-function GetOsNameAlt()
-{
-    os_name=$(egrep -e "PRETTY_NAME" /etc/os-release | \
-        sed 's/PRETTY_NAME=//g' | \
-        sed 's/\"//g')
+   
+   echo -e "The current release description is: ${setansi} $os_name $ransi"
 }
 
 function CheckPrerequisites()   
@@ -328,7 +324,7 @@ function CheckPrerequisites()
                 if [[ "$debian_branch" == "1" ]]
                 then
                     # Set/call alternte methods to retrieve System information
-                    GetOsNameAlt
+                    ## GetReleaseDescription() Modified for this
                     #check_prog=0;
                     debug "System is not Debian Branch" 1
                 fi
@@ -1174,7 +1170,7 @@ function CheckIfCertifiedHardwarePlatform()
     nl
 }
 
-function GetUserInstalled ()
+function GetUserInstalled()
 {
     ## Get a list of User Installed Packages 
     # This only works for Debian Branch...
@@ -1366,7 +1362,8 @@ function MessageLess()
     SensitiveDataWarning
  }
  
-function SensitiveDataWarning () {
+function SensitiveDataWarning() 
+{
     echo -e "$redback --- SENSITIVE DATA WARNING --- $resetvid "
     nl
     echo -e "This Report is prepared in two versions- "
