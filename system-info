@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00, Script Date: 2022.06.23"
+version="Version: 02.00-00 beta, Script Date: 2022.06.26"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -255,6 +255,8 @@ function CheckPrerequisites()
     	wget
     	ls
     	lsb_release
+    	stat
+    	stdbuf
     	rm
     	sed
     	ping
@@ -622,7 +624,7 @@ function GetMem()
 {
     # Gets memory information (pysical and swap). Called once by GetMachineInfo().
     echo -e "${setansi}---------- Memory Information:$ransi"
-    mem_stats=$(free -h)
+    mem_stats=$(free -m)
     echo -e "$mem_stats"
     nl
 }
@@ -780,16 +782,16 @@ function GetStorageControllers() {
     # Based on this information: 
     #     lspci | grep --color=never -i -e 'IDE controller' -e 'SATA controller' -e 'SCSI controller' -e 'Non-Volatile memory controller' -e 'RAID Controller'
     echo -e "${setansi}---------- Storage Controller Information From 'lspci':$ransi"
-    cntrllr_busid_list=$(lspci | grep --color=never -i -e 'IDE controller' \
-        -e 'SATA controller' \
-        -e 'SCSI controller' \
-        -e 'Non-Volatile memory controller' \
-        -e 'RAID Controller' | \
+    cntrllr_busid_list=$(lspci | grep --color=never -i -e 'IDE ' \
+        -e 'SATA ' \
+        -e 'SCSI ' \
+        -e 'Non-Volatile memory ' \
+        -e 'RAID ' | \
         awk '{print $1}')
     # Modified for devices which have no formal storage controllers besides USB or SD
     if [ ! -z "$cntrllr_busid_list" ]
     then
-        # Parse through list )array) and show detailed information on each
+        # Parse through list (array) and show detailed information on each
         for controller in ${cntrllr_busid_list}
         do
             sudo lspci -s $controller -vv
@@ -1039,6 +1041,7 @@ function GetHweInfo()
 {
     # Get HWE information safely. Only call if it is a flavor of Ubuntu
     # Check if in Debian Branch
+    echo -e "   --- Hardware Enablement Stack (HWE) Informationt:"
     if [[ "$debian_branch" == "0" ]]
     then
         # Make sure it is a flavor of Ubuntu
@@ -1053,10 +1056,12 @@ function GetHweInfo()
             fi
         else
             echo -e "System tested is Debian Branch, but is not an Ubuntu or an Ubuntu flavor."
+            echo -e "HWE is Ubuntu specific."
             nl
         fi
     else
         echo -e "System tested is either not Ubuntu or is an Ubuntu EOS release version."
+        echo -e "HWE is Ubuntu specific."
         nl
     fi
 
