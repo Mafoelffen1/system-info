@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.06.26"
+version="Version: 02.00-00 beta, Script Date: 2022.06.29"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -212,22 +212,30 @@ function CheckUbuntuFlavor()
 
 function GetReleaseDescription()
 {
-   # Alternate Information method to 
-   #    echo -e "The current release description is: ${setansi} $(lsb_release -sd) $ransi"
-   # called from GetOtherDetails()
+   # Retrieve 'Release Description' from a Linux Operating System
+   # As an alternative to: echo -e "The current release description is: ${setansi} $(lsb_release -sd) $ransi"
+   # Called from GetOtherDetails()
    
-   if [[ "$debian_branch" == "0" ]]
+   #check_lsb_release=1
+   
+   if [[ "$check_lsb_release" == "0" ]]
    then
        os_name=$(lsb_release -sd)
        debug "Got release description from 'lsb_release'." 1
    else
-       os_name=$(egrep -e "PRETTY_NAME" /etc/os-release | \
-           sed 's/PRETTY_NAME=//g' | \
+       # Parse through the (possibly) many release file candidates to retrieve the answer...
+       os_name=$(egrep -m 1 'PRETTY_NAME|DIST_DESCRIPTION' /etc/*release | \
+           sed 's/\/etc\/.*release://g' | \
+           sed -e 's/[Pp][Rr][Ee][Tt][Tt][Yy]_[Nn][Aa][Mm][Ee]=//g'  \
+               -e 's/[D,d][E,e][S.s][C,c][R,r][I,i][P,p][T,t][I,i][O,o][Nn]=//g' | \
            sed 's/\"//g')
-      debug "Got release description from 'os-release' file" 1
+      nl
+      debug "Got release description from 'release' file" 1
    fi
    
-   echo -e "The current release description is: ${setansi} $os_name $ransi"
+   nl
+   echo -e "The current release description is: $os_name"
+   nl
 }
 
 function CheckPrerequisites()   
@@ -279,6 +287,7 @@ function CheckPrerequisites()
     check_prog=1;
     check_mokutil=1;
     check_lshw=0;
+    check_lsb_release=0;
     
     CheckDebianBranch
     CheckUbuntuFlavor
@@ -310,7 +319,7 @@ function CheckPrerequisites()
                 check_paster=$((check_paster+1));
                 missing_paster_progs="$missing_paster_progs$Program, "
                 missing_programs="$missing_programs\n$Program"
-            # To take care of a permssions check issue on Debian, 2022.06.15
+            # To take care of a permissions check issue on Debian, 2022.06.15
             elif [[ "$Program" == "fdisk" ]]
             then
                 #LSB_ID=$(lsb_release -si)
@@ -322,14 +331,14 @@ function CheckPrerequisites()
                 fi
             elif [[ "$Program" == "lsb_release" ]]
             then
-                # Is not Debian Branch? call CheckDebianBranch() before this check...
-                if [[ "$debian_branch" == "1" ]]
-                then
-                    # Set/call alternte methods to retrieve System information
-                    ## GetReleaseDescription() Modified for this
-                    #check_prog=0;
-                    debug "System is not Debian Branch" 1
-                fi
+                # CHANGE - Do not assume all Debian Branch uses 'lsb_release'...
+                # If 'lsb_release' does not exist, then set flag for it.
+                # Set/call alternate methods to retrieve System Description information
+                ## GetReleaseDescription() Modified for this
+                #check_prog=0;
+                check_lsb_release=1
+                debug "Utility 'lsb-release' is not here" 1
+                
             elif [[ "$Program" == "ubuntu-drivers" ]]
             then
                 # Check if it is Ubuntu Flavor, else not needed
@@ -482,7 +491,7 @@ function GetCPU()
             -e 's/ Capabilities/   Capabilities/' \
             -e 's/       /    /' \
             -e '/Capabilities/ s/^[^ ]/          &/'
-         nl
+        nl
         $lshw_cmd \
             | sed '/*-core/,$ d' \
             | sed -r '/^  *([a-z])/ s/([a-zA-Z])/\u&/' \
@@ -843,7 +852,7 @@ function GetGraphicsEnv()
                 nl
             done
         else
-            echo -e "No formal GPU found. Check in other places fro a framebuffer."
+            echo -e "No formal GPU found. Check in other places for a framebuffer."
             nl
         fi
     fi
@@ -907,7 +916,7 @@ function GetRepositories()
 {
     # Gets Repository Information. Called once by Writer().
     # 	Method only works in Debian Branch. Check for Debian Branch first...
-    debug "$debian_branch" 1
+    debug "debian_branch: $debian_branch" 1
     if [[ "$debian_branch" == "0" ]]
     then    
         echo -e "${setansi}---------- Repository Information from '/etc/apt/sources.list and etc/apt/sources.list.d/':$ransi"
@@ -980,7 +989,7 @@ function GetOriginalInstallDate()
         installer_date=$(sudo find /var/log/installer/ -type f -printf "%T+\n" 2> /dev/null | sort| head -1 2> /dev/null )
         installer_date="Original Installation Date:         ${setansi} ${installer_date%.*} $ransi"
     else
-        debug "$(sudo find / -maxdepth 1 -type d -printf "%T+ %p\n" > /dev/null | sort| head -1 )" 1 
+        debug "Installer date: $(sudo find / -maxdepth 1 -type d -printf "%T+ %p\n" > /dev/null | sort| head -1 )" 1 
         #installer_date=$(sudo find / -maxdepth 1 -type d -printf "%T+ %p\n" 2> /dev/null | sort | head -1)
         installer_date=$( \
             for i in /*; \
@@ -1228,7 +1237,7 @@ function GetSnapInstalled()
     if [[ "$snap_exit" == "0" ]]
     then       
         snap_list=$(snap list | awk '{print $1}' | grep -v 'Name')
-        #debug "${#snap_list[@]}" 1
+        debug "${Snaplist count: #snap_list[@]}" 1
         
         if [ "$snap_list" == "" ] 
         then
@@ -1255,7 +1264,7 @@ function GetFlatpakInstalled()
     if [[ "$flatpak_exit" == "0" ]]
     then       
         flatpak_list=$(flatpak list | awk '{print $1}' | grep -v 'Name')
-        #debug "${#flatpak_list[@]}" 1
+        debug "Flatpak list count:${#flatpak_list[@]}" 1
         
         if [ "$flatpak_list" == "" ] 
         then
