@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.06.29"
+version="Version: 02.00-00 beta, Script Date: 2022.06.30"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -233,8 +233,17 @@ function GetReleaseDescription()
       debug "Got release description from 'release' file" 1
    fi
    
-   nl
-   echo -e "The current release description is: $os_name"
+   echo -e "    --- Operating System Release Descriptiuon --- "
+   
+   if [[ "$os_name" == "" ]]
+   then
+       echo -e "There was a problem determining the Release Description... "
+       echo -e "Here is the raw outout of the release file(s) to determine manually:"
+       egrep --color=never '=' /etc/*release
+   else
+       echo -e "The current release description is: ${setansi} $os_name $ransi"
+   fi
+   
    nl
 }
 
@@ -1237,7 +1246,7 @@ function GetSnapInstalled()
     if [[ "$snap_exit" == "0" ]]
     then       
         snap_list=$(snap list | awk '{print $1}' | grep -v 'Name')
-        debug "${Snaplist count: #snap_list[@]}" 1
+        debug "Snaplist count: ${#snap_list[@]}" 1
         
         if [ "$snap_list" == "" ] 
         then
