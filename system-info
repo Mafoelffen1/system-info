@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.06.30"
+version="Version: 02.00-00 beta, Script Date: 2022.07.01"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -1519,6 +1519,7 @@ function PasteCurl()
         --data "syntax=${PASTEBIN_SYNTAX:-text}" \
         --data "expiration=${PASTEBIN_EXPIRATION:-week}")
     check_paste=$?
+    debug "From PasteCurl()" 1
     debug "Response: $return_url Exit Code: $check_paste" 1;
 }
 
@@ -1530,6 +1531,7 @@ function PastePastebinit()
         -b "$target" \
         -t "$sname.txt")
     check_paste=$?
+    debug "From PastePasebinit()" 1
     debug "Response: $return_url Exit Code: $check_paste" 1;
 }
 
@@ -1537,6 +1539,7 @@ function PasteWget()
 {
     return_url=$(wget --quiet -O- --post-data="$(cat $report)" 'termbin.com:9999' | tr '\0' '\n' )
     check_paste=$?
+    debug "From PasteWget()" 1
     debug "Response: $return_url Exit Code: $check_paste" 1;
 }
 
@@ -1550,6 +1553,7 @@ function PasteNc()
     then
         return_url=$(cat $report | nc termbin.com 9999 | tr '\0' '\n')
         check_paste=$?
+        debug "From PasteNc()" 1
         debug "Response: $return_url Exit Code: $check_paste" 1;
     else
         echo -e "You skipped uploading to Pastebin."
@@ -1651,7 +1655,8 @@ function Paster()
                  rm "$keep_spinning"
                  sleep 0.5
                  tput cnorm
-                 debug "paste_done: $paste_done" 1
+                 debug "From Paster()" 1
+                 debug "Paste_done: $paste_done" 1
                  if $paste_done
                  then
                      echo -e "Uploaded Report: ${startt}:" >> "$linklog"
