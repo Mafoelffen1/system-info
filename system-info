@@ -224,7 +224,7 @@ function GetReleaseDescription()
        debug "Got release description from 'lsb_release'." 1
    else
        # Parse through the (possibly) many release file candidates to retrieve the answer...
-       os_name=$(egrep -m 1 'PRETTY_NAME|DIST_DESCRIPTION' /etc/*release | \
+       os_name=$(egrep -m 1 'PRETTY_NAME|DISTRIB_DESCRIPTION' /etc/*release | \
            sed 's/\/etc\/.*release://g' | \
            sed -e 's/[Pp][Rr][Ee][Tt][Tt][Yy]_[Nn][Aa][Mm][Ee]=//g'  \
                -e 's/[D,d][E,e][S.s][C,c][R,r][I,i][P,p][T,t][I,i][O,o][Nn]=//g' | \
