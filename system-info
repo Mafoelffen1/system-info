@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.01"
+version="Version: 02.00-00 beta, Script Date: 2022.07.03"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -233,7 +233,7 @@ function GetReleaseDescription()
       debug "Got release description from 'release' file" 1
    fi
    
-   echo -e "    --- Operating System Release Descriptiuon --- "
+   echo -e "    --- Operating System Release Description --- "
    
    if [[ "$os_name" == "" ]]
    then
@@ -1510,14 +1510,9 @@ function Writer
 
 function PasteCurl()
 {
-    return_url=$(curl -fsSL -X POST \
-        --url $target \
-        --output /dev/null \
-        --write-out "%{url_effective}\n" \
-        --data-urlencode "content@${PASTEBIN_CONTENT:-$report}" \
-        --data "poster=${PASTEBIN_POSTER:-`whoami`@`hostname`}" \
-        --data "syntax=${PASTEBIN_SYNTAX:-text}" \
-        --data "expiration=${PASTEBIN_EXPIRATION:-week}")
+    target="ix.io"
+    return_url=$(printf "%s" "$(<$report)" | curl -F 'f:1=<-' $target )
+    
     check_paste=$?
     debug "From PasteCurl()" 1
     debug "Response: $return_url Exit Code: $check_paste" 1;
@@ -1525,6 +1520,7 @@ function PasteCurl()
 
 function PastePastebinit()
 {
+    target="https://paste.ubuntu.com"
     return_url=$(pastebinit \
         -a "$USER" \
         -i "$report" \
@@ -1537,7 +1533,8 @@ function PastePastebinit()
 
 function PasteWget()
 {
-    return_url=$(wget --quiet -O- --post-data="$(cat $report)" 'termbin.com:9999' | tr '\0' '\n' )
+    target="termbin.com:9999"
+    return_url=$(wget --quiet -O- --post-data="$(cat $report)" $target | tr '\0' '\n' )
     check_paste=$?
     debug "From PasteWget()" 1
     debug "Response: $return_url Exit Code: $check_paste" 1;
@@ -1551,7 +1548,8 @@ function PasteNc()
     read -erp "Would you like to proceed or skip? (y/N) " ans
     if [[ ${ans,} =~ ^[Yy]$ ]]
     then
-        return_url=$(cat $report | nc termbin.com 9999 | tr '\0' '\n')
+        target="termbin.com 9999"
+        return_url=$(cat $report | nc $target | tr '\0' '\n')
         check_paste=$?
         debug "From PasteNc()" 1
         debug "Response: $return_url Exit Code: $check_paste" 1;
@@ -1563,10 +1561,10 @@ function PasteNc()
 
 function CheckPasterProgs()
 {
-    if [ -e /usr/bin/curl ]
+    if [ -e /usr/bin/pastebinit ]
     then
         paste_prog=1;
-    elif [ -e /usr/bin/pastebinit ]
+    elif [ -e /usr/bin/curl ]
     then
         paste_prog=2;
     elif [ -e /usr/bin/wget ]
@@ -1588,10 +1586,10 @@ function DoPaste()
     debug "Passed $prog_here" 1
     case "$prog_here" in
         1)
-            PasteCurl
+            PastePastebinit
             ;;
         2)
-            PastePastebinit
+            PasteCurl
             ;;
         3)
             PasteWget
@@ -1625,7 +1623,7 @@ function ProgressActive()
 function Paster() 
  {
      # Provides an upload of report with a progress bar. Called once by Main().
-     target="https://paste.ubuntu.com"
+     #target="https://paste.ubuntu.com"
      linklog="$HOME/${sname}-link.log"
 
      echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
@@ -1633,7 +1631,7 @@ function Paster()
      ## Eval $paste_prog
      if [ $paste_prog -ne 0 ]
      then 
-         read -erp "Do you want to upload the report file to '$target'? (y/N) " ans
+         read -erp "Do you want to upload the report file to a pastebin? (y/N) " ans
          if [[ ${ans,} =~ ^[Yy]$ ]]
          then
              GetPingStatus "www.ubuntu.com"
@@ -1673,7 +1671,7 @@ function Paster()
                      nl
                  fi
              else
-                    echo -e "No connection to pastebin.ubuntu.com " | tee -a "$linklog"
+                    echo -e "No connection to an outside URL. " | tee -a "$linklog"
                     echo -e "Please copy the file $report to a USB and post "
                     echo -e "from a computer that does have a working connection."
                     echo -e "Upload the file manually: 'copy & paste' to"
