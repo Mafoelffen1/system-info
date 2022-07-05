@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.03"
+version="Version: 02.00-00 beta, Script Date: 2022.07.05"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -293,6 +293,10 @@ function CheckPrerequisites()
         fdisk
     	lshw'
 
+    # Programs that are in /usr/snap/bin.
+    Programs_SnapBin='
+        curl'
+        
     check_prog=1;
     check_mokutil=1;
     check_lshw=0;
@@ -301,10 +305,41 @@ function CheckPrerequisites()
     CheckDebianBranch
     CheckUbuntuFlavor
 
-    for Program in ${Programs} ${Programs_SBIN} 
+    for Program in ${Programs} ${Programs_SBIN}
     do
         if [ $(type ${Program} > /dev/null 2>&1 ; echo $?) -ne 0 ]
         then
+            ## Added to check if a program is not in bin or sbin, but might be present in Snap
+            #    I might have to replicate this for Flatpak(?)
+            for Program in ${Programs_SnapBin}
+            do
+                ## This first part is more generic code for future things moved to the Snap Store...
+                if [[ "$(snap list $Program 2> /dev/null )" != "no matching snaps installed" ]]
+                then
+                    check_prog=0;
+                    debug "$Program found in Snap" 1
+                elif [[ "$(flatpk list $Program 2> /dev/null )" != "no matching flatpaks installed" ]]
+                then
+                    check_prog=0
+                    debug "$Program found in FlatPak" 1
+                else
+                    debug "$Program not found in an Alternative Package Store" 1
+                fi
+                
+                # This second part if=s just for now, where 'curl' might be from Snap
+                if [[ "$Program" == "curl" ]]
+                then
+                    if [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
+                    then
+                        check_prog=0;
+                        debug "'curl' was found in either /usr/bin or /snap/bin" 1
+=                    else
+                        check_prog=1;
+                        debug "'curl' was not found in either /usr/bin or /snap/bin" 1
+                    fi
+                fi
+            done
+
             if [[ "$check_prog" == "1" ]]
             then
                 echo -e " --- Some Programs This Script Uses Were Missing --- "
@@ -1564,7 +1599,7 @@ function CheckPasterProgs()
     if [ -e /usr/bin/pastebinit ]
     then
         paste_prog=1;
-    elif [ -e /usr/bin/curl ]
+    elif [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
     then
         paste_prog=2;
     elif [ -e /usr/bin/wget ]
@@ -1613,7 +1648,7 @@ function ProgressActive()
      do
          for spin in "${spinner[@]}"
          do 
-             stdbuf -oL echo -ne $spin
+             stdbuf -oL echo -ne $spin 2> /dev/null
              sleep 0.2
          done
     done
@@ -1623,7 +1658,7 @@ function ProgressActive()
 function Paster() 
  {
      # Provides an upload of report with a progress bar. Called once by Main().
-     #target="https://paste.ubuntu.com"
+     target="a pastebin (URL depends on the method used)."
      linklog="$HOME/${sname}-link.log"
 
      echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
