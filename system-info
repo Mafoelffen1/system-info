@@ -333,7 +333,7 @@ function CheckPrerequisites()
                     then
                         check_prog=0;
                         debug "'curl' was found in either /usr/bin or /snap/bin" 1
-=                    else
+                    else
                         check_prog=1;
                         debug "'curl' was not found in either /usr/bin or /snap/bin" 1
                     fi
