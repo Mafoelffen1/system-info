@@ -311,23 +311,24 @@ function CheckPrerequisites()
         then
             ## Added to check if a program is not in bin or sbin, but might be present in Snap
             #    I might have to replicate this for Flatpak(?)
-            for Program in ${Programs_SnapBin}
+            #    Renamed variable $Program in this stub here to ProgramSof (for "Program: Snap Or Flatpak".
+            for ProgramSoF in ${Programs_SnapBin}
             do
                 ## This first part is more generic code for future things moved to the Snap Store...
-                if [[ "$(snap list $Program 2> /dev/null )" != "no matching snaps installed" ]]
+                if [[ "$(snap list $ProgramSoF 2> /dev/null )" != "no matching snaps installed" ]]
                 then
                     check_prog=0;
-                    debug "$Program found in Snap" 1
-                elif [[ "$(flatpk list $Program 2> /dev/null )" != "no matching flatpaks installed" ]]
+                    debug "$ProgramSoF found in Snap" 1
+                elif [[ "$(flatpk list $ProgramSoF 2> /dev/null )" != "no matching flatpaks installed" ]]
                 then
                     check_prog=0
-                    debug "$Program found in FlatPak" 1
+                    debug "$ProgramSoF found in FlatPak" 1
                 else
-                    debug "$Program not found in an Alternative Package Store" 1
+                    debug "$ProgramSoF not found in an Alternative Package Store" 1
                 fi
                 
                 # This second part if=s just for now, where 'curl' might be from Snap
-                if [[ "$Program" == "curl" ]]
+                if [[ "$ProgramSoF" == "curl" ]]
                 then
                     if [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
                     then
