@@ -864,7 +864,7 @@ function GetZfsInfo()
 function GetLuksInfo()
 {
     luks_fs_type=$(lsblk -o NAME,FSTYPE | grep -m 1 'crypto_LUKS' )
-    if [[ ]]
+    if [[ "$luks_fs_type" != "" ]]
     then
         echo -e "${setansi}----------  LUKS Information:$ransi"
         echo -e "System has a LUKS encrypted filesystem."
