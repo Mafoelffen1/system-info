@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.07"
+version="Version: 02.00-00 beta, Script Date: 2022.07.08"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -194,6 +194,7 @@ function CheckDebianBranch()
     else
         debian_branch=1
     fi
+    debug "CheckDebianBranch(). Value: $debian_branch" 1
 }
 
 function CheckUbuntuFlavor()
@@ -208,6 +209,7 @@ function CheckUbuntuFlavor()
     else
         ubuntu_flavor=1
     fi
+    debug "CheckUbuntuFlavor(). Value: $ubuntu_found" 1
 }
 
 function GetReleaseDescription()
@@ -215,8 +217,6 @@ function GetReleaseDescription()
    # Retrieve 'Release Description' from a Linux Operating System
    # As an alternative to: echo -e "The current release description is: ${setansi} $(lsb_release -sd) $ransi"
    # Called from GetOtherDetails()
-   
-   #check_lsb_release=1
    
    if [[ "$check_lsb_release" == "0" ]]
    then
@@ -240,6 +240,7 @@ function GetReleaseDescription()
        echo -e "There was a problem determining the Release Description... "
        echo -e "Here is the raw outout of the release file(s) to determine manually:"
        egrep --color=never '=' /etc/*release
+       debug "GetReleaseDescription(). Dumped release file info. Condition failed." 1
    else
        echo -e "The current release description is: ${setansi} $os_name $ransi"
    fi
@@ -372,7 +373,7 @@ function CheckPrerequisites()
                 then
                     # Set Debian as an exception
                     check_prog=0;
-                    debug "System is Debian" 1
+                    debug "System is Debian, 'fdisk'" 1
                 fi
             elif [[ "$Program" == "lsb_release" ]]
             then
@@ -382,7 +383,7 @@ function CheckPrerequisites()
                 ## GetReleaseDescription() Modified for this
                 #check_prog=0;
                 check_lsb_release=1
-                debug "Utility 'lsb-release' is not here" 1
+                debug "Utility 'lsb_release' is not here" 1
                 
             elif [[ "$Program" == "ubuntu-drivers" ]]
             then
@@ -490,6 +491,8 @@ function RmOldReport()
 {
     # Removes the old report. Called once by Main().
     /bin/rm -f "$report"
+    exit_code=$?
+    debug "Remove old report. Exit code: $exit_code" 1
 }
 
 function UserInput()
@@ -742,6 +745,7 @@ function GetPingStatus()
     else 
         return_status="false"
     fi    
+    debug "GetPingStatus(): Value: $return_status" 1
 }
 
 function GetIP()
@@ -793,6 +797,7 @@ function CheckIpUp()
     else
         debug -e "'show_silent' call out of range $show_silent" 1
     fi
+    debug -e "show_silent: $show_silent 'up_status': $up_status" 1
 }
 
 function GetFQDN()
@@ -824,6 +829,8 @@ function GetDiskInfo()
     echo -e "   ------- 'lsblk' information continued ..."
     lsblk -o NAME,HOTPLUG,PARTUUID,UUID | grep -v 'loop'
     nl
+    GetZfsInfo
+    GetLuksInfo
     echo -e "${setansi}---------- Mount Details of '/etc/fstab':$ransi"
     egrep -v '#' /etc/fstab
     nl
@@ -831,6 +838,40 @@ function GetDiskInfo()
     mount | grep '^/dev' | sort
     nl
 }
+
+function GetZfsInfo()
+{
+    zfs_part_type=$(sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris' )
+    zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | grep -v '/snap/' | grep -m 1 'rpool')
+    
+    if [[ "$zfs_part_type" != "" ]]
+    then
+        echo -e "${setansi}----------  ZFS Information:$ransi"
+        echo -e "System has at least one ZFS type partition."
+        if [[ "$zfs_fs_type" != "" ]]
+        then
+            echo -e "System has ZFS rpools activated."
+            ## Uncomment the next two lines, if more information is needed
+            #zfs list
+            #zpool list
+        else
+            echo -e "System has no ZFS rpools activated."
+        fi
+        nl
+    fi
+}
+
+function GetLuksInfo()
+{
+    luks_fs_type=$(lsblk -o NAME,FSTYPE | grep -m 1 'crypto_LUKS' )
+    if [[ ]]
+    then
+        echo -e "${setansi}----------  LUKS Information:$ransi"
+        echo -e "System has a LUKS encrypted filesystem."
+        nl
+    fi
+}
+
 
 function GetStorageControllers() {
     # Based on this information: 
@@ -1182,7 +1223,7 @@ function GetHweRange() {
         (*)
             echo -e "Something went wrong. LTS Edition out of HWE support range."
     esac    
-
+    debug "HWE LTS_PKG: $LTS_PKG" 1
 }
 
 function GetHweKernels()
@@ -1223,7 +1264,7 @@ function CheckIfCertifiedHardwarePlatform()
         echo -e "the Hardware Enablement Stack (HWE)."
     else
         echo -e "Hardware meta packages were listed. Please refrain from manually changing "
-        echo -e "the kernel flavours. The Hardware Enablement Stack (HWE) should not be "
+        echo -e "the kernel flavors. The Hardware Enablement Stack (HWE) should not be "
         echo -e "installed on this platform. "
     fi
     nl
@@ -1344,7 +1385,8 @@ function GetWhere() {
     # Create temp file
     ssh_data=$(mktemp /tmp/ssh_data-XXXXX)
     # Redirect/Populate output to temp file
-    w | grep ' w' | grep --color=never ' pts/' > $ssh_data
+    #w | grep ' w -sh' | grep -v ' pts/0' | grep --color=never ' w -sh ' > $ssh_data
+    w -sh $USER | grep -v ' pts/0' | awk '/ pts\// && / w -sh /' > $ssh_data
     # Ask question
     if [ -z "$(awk '{print $0}' $ssh_data)" ]
     then
