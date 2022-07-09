@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.08"
+version="Version: 02.00-00 beta, Script Date: 2022.07.09"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -795,9 +795,9 @@ function CheckIpUp()
             up_status="true"
         fi
     else
-        debug -e "'show_silent' call out of range $show_silent" 1
+        debug "'show_silent' call out of range $show_silent" 1
     fi
-    debug -e "show_silent: $show_silent 'up_status': $up_status" 1
+    debug "show_silent: $show_silent 'up_status': $up_status" 1
 }
 
 function GetFQDN()
@@ -1553,7 +1553,7 @@ function ArchiveReport() {
                 then
                     if [ $verbosity -eq 5 ]
                     then 
-                       debug "Continuing without creating archive file..." 
+                       debug "Continuing without creating archive file..." 1
                        Sleep 1
                     fi
                 fi
