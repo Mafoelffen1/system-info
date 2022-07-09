@@ -1062,7 +1062,10 @@ function GetOtherDetails()
     id |tr ' ' '\n'|sed 's/,/, /g'| fold -sw 80 |sed 's/ //g'
     nl
     GetLiveCD
+    GetLive
     GetWhere
+    GetLocal
+    GetSessionType
     GetCmdLine
 }
 
@@ -1400,6 +1403,71 @@ function GetWhere() {
     echo -e "The 'system-info' script was run $ssh_test"
     nl
 }
+
+######################
+### START PROPOSED ###
+
+function GetLive 
+{
+    live=false
+
+    if [ $(mount | grep ' / ' | grep -e squashfs -e tmpfs) ]
+    then
+        live=true
+    elif [ $(df | grep ' /$'|grep -e overlay -e cow -e aufs -e rootfs -e /dev/mapper/live-rw) ]
+    then
+        live=true
+    fi
+
+    if $live
+    then
+        echo "This seems to be a Live Image Environment (LIE)."
+    else
+        echo "This seems to be an installed system"
+    fi
+
+    nl
+}
+
+function GetLocal 
+{
+    tmpstr="locally"    
+    pts=$(ps -e | grep -e "${0##*/}" | grep -om1 'pts/[0-9]*')
+    debug "PTS: $pts" 1
+    
+    if [[ "$pts" != "" ]]
+    then
+        if [ $(ps -ef | grep "@$pts" | grep "sshd") ]
+        then
+          tmpstr="via ssh"
+        fi
+    fi
+
+    echo "This script seems to be run $tmpstr"
+    nl
+}
+
+function GetSessionType
+{
+    SESSION_TYPE=local
+    session_test=$(ps -o comm= -p $PPID)
+    
+    if [ -n "$SSH_CLIENT" ] || [ -n "$SSHTTY" ]
+    then
+        SESSION_TYPE=remote/ssh
+    else
+        case $session_test in
+            sshd|*/sshd)
+                SESSION_TYPE=remote/ssh
+                ;;
+        esac
+    fi
+    echo -e "This script was run from a $SESSION_TYPE session"
+    nl
+}
+
+### END PROPOSED ###
+####################
 
 function GetCmdLine() {
     cmd_line=$(awk '{print $0}' /proc/cmdline)
