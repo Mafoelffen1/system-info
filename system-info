@@ -451,14 +451,16 @@ function CheckPrerequisites()
                 if [ -e /sbin/fdisk ]
                 then
                     check_prog=0
-                    debug "fdisk is in sbin" 1
+                    debug "'fdisk' is in /sbin" 1
+                fi
             elif [[ "$Program" == "ip" ]]
             then
                 # For Slackware
                 if [ -e /sbin/ip ]
                 then
                     check_prog=0
-                    debug "fdisk is in sbin" 1
+                    debug "'ip' is in /sbin" 1
+                fi
             elif [[ "$Program" == "lsb_release" ]]
             then
                 # CHANGE - Do not assume all Debian Branch uses 'lsb_release'...
