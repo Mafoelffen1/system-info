@@ -461,6 +461,23 @@ function CheckPrerequisites()
                     check_prog=0
                     debug "'ip' is in /sbin" 1
                 fi
+            elif [[ "$Program" == "lspci" ]]
+            then
+                # For Slackware. lspci is in /sbin, instead of /bin
+                if [ -e /bin/lspci ]
+                then
+                    lspci_cmd="/bin/lspci"
+                    check_prog=0
+                    debug "'lspci' is in /bin" 1
+                elif [ -e /sbin/lspci ]
+                then
+                    lspci_cmd="/sbin/lspci"
+                    check_prog=0
+                    debug "'lspci' is in /sbin" 1
+                else 
+                    lspic_cmd="lspci"
+                    debug "'lspci' was not found." 1
+                fi
             elif [[ "$Program" == "lsb_release" ]]
             then
                 # CHANGE - Do not assume all Debian Branch uses 'lsb_release'...
@@ -842,7 +859,7 @@ function GetIP()
     # Grab IP address information
     if [ "$less_status" == "less" ]
     then
-        ip_addr=$(ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.')
+        ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.')
         echo -e "$ip_addr"
     else
         ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.' \
@@ -963,7 +980,7 @@ function GetStorageControllers() {
     # Based on this information: 
     #     lspci | grep --color=never -i -e 'IDE controller' -e 'SATA controller' -e 'SCSI controller' -e 'Non-Volatile memory controller' -e 'RAID Controller'
     echo -e "${setansi}---------- Storage Controller Information From 'lspci':$ransi"
-    cntrllr_busid_list=$(lspci | grep --color=never -i -e 'IDE ' \
+    cntrllr_busid_list=$($lspci_cmd | grep --color=never -i -e 'IDE ' \
         -e 'SATA ' \
         -e 'SCSI ' \
         -e 'Non-Volatile memory ' \
@@ -975,7 +992,7 @@ function GetStorageControllers() {
         # Parse through list (array) and show detailed information on each
         for controller in ${cntrllr_busid_list}
         do
-            sudo lspci -s $controller -vv
+            sudo $lspci_cmd -s $controller -vv
             nl
         done
     else
@@ -1012,7 +1029,7 @@ function GetGraphicsEnv()
         # Use alternate method to display GPU info
         echo -e "${setansi}---------- Video Details from 'lspci':$ransi"
         #lspci | grep -i vga | sed 's/[0-9][0-9]:[0-9][0-9]\.[0-9] //g'
-        gpu_list=$(lspci | grep --color=never -i -e 'VGA' | \
+        gpu_list=$($lspci_cmd | grep --color=never -i -e 'VGA' | \
             awk '{print $1}')
         # Modified for devices which have no formal GPU's
         if [ ! -z "$gpu_list" ]
@@ -1020,7 +1037,7 @@ function GetGraphicsEnv()
             # Parse through list )array) and show detailed information on each
             for gpu in ${gpu_list}
             do
-                sudo lspci -s $gpu -vv
+                sudo $lspci_cmd -s $gpu -vv
                 nl
             done
         else
