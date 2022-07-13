@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.12"
+version="Version: 02.00-00 beta, Script Date: 2022.07.13"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -448,7 +448,14 @@ function CheckPrerequisites()
                     check_prog=0;
                     debug "System is Debian, 'fdisk'" 1
                 fi
-                if [ -e /sbin/fdisk }
+                if [ -e /sbin/fdisk ]
+                then
+                    check_prog=0
+                    debug "fdisk is in sbin" 1
+            elif [[ "$Program" == "ip" ]]
+            then
+                # For Slackware
+                if [ -e /sbin/ip ]
                 then
                     check_prog=0
                     debug "fdisk is in sbin" 1
@@ -918,7 +925,7 @@ function GetDiskInfo()
 
 function GetZfsInfo()
 {
-    zfs_part_type=$(sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris' )
+    zfs_part_type=$(sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris' )
     zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | grep -v '/snap/' | grep -m 1 'rpool')
     
     if [[ "$zfs_part_type" != "" ]]
