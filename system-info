@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.09"
+version="Version: 02.00-00 beta, Script Date: 2022.07.12"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -173,6 +173,78 @@ function CheckArgs()
     fi
 }
 
+function CheckPath() 
+{
+    # Copy PATH to variable. 
+    Path_Original=$PATH
+    PathEval=$Path_Original
+    debug "Path- $Path_Original" 1
+    
+    path_test=0
+    bin_exist=1
+    sbin_exist=1
+    path_append=""
+
+    ## Split on ':' treat as Array, so each member can be evaluated.
+    DFIS=$IFS
+    
+    while IFS=':' read -ra PathEval
+    do
+        for member in "${PathEval[@]}"
+        do
+            debug "Member- $member" 1
+            if [ "$member" == "/bin" ]
+            then
+                debug "bin found" 1
+                bin_exist=0                
+            fi
+            if [ "$member" == "/sbin" ]
+            then
+                debug "sbin found" 1
+                sbin_exist=0                
+            fi
+        done
+    done <<< $Path_Original
+    
+    IFS=$DIFS
+    
+    if [ $bin_exist -eq 1 ]
+    then
+        debug "bin not found" 1
+        path_append=$path_append":/bin"
+        path_test=1
+    fi
+    
+    if [ $sbin_exist -eq 1 ]
+    then
+        debug "sbin not found" 1
+        path_append=$path_append":/sbin"
+        path_test=1
+    fi
+
+    debug "path_append string: $path_append" 1
+
+    if [ $path_test -eq 1 ]
+    then
+        export PATH=$PATH$path_append
+        echo -e "Reseting PATH variable. The 'system-info' Script will restore "
+        echo -e "the orgianal PATH at the completion of running the script. "
+        echo
+        debug "Reset Path- $PATH" 1
+    else
+        debug "Original Path- $PATH" 1
+    fi
+}
+
+function RestorePath()
+{
+    # If Path has been fixed, restore path to original
+    if [ "$Path_Orignal" != "$PATH" ]
+    then
+        export PATH=$Path_Original
+    fi
+}
+
 function CheckTypeError() {
    type -a type > /dev/null 2>&1
    TypeError=$?
@@ -272,6 +344,8 @@ function CheckPrerequisites()
     	nc
     	wget
     	ls
+    	lshw
+    	lspci
     	lsb_release
     	stat
     	stdbuf
@@ -279,7 +353,6 @@ function CheckPrerequisites()
     	sed
     	ping
     	id
-    	ip
     	hostname
     	lsblk
     	lsusb
@@ -292,7 +365,7 @@ function CheckPrerequisites()
     # Programs that are in /usr/sbin or /sbin.
     Programs_SBIN='
         fdisk
-    	lshw'
+        ip'
 
     # Programs that are in /usr/snap/bin.
     Programs_SnapBin='
@@ -375,6 +448,10 @@ function CheckPrerequisites()
                     check_prog=0;
                     debug "System is Debian, 'fdisk'" 1
                 fi
+                if [ -e /sbin/fdisk }
+                then
+                    check_prog=0
+                    debug "fdisk is in sbin" 1
             elif [[ "$Program" == "lsb_release" ]]
             then
                 # CHANGE - Do not assume all Debian Branch uses 'lsb_release'...
@@ -759,7 +836,7 @@ function GetIP()
         ip_addr=$(ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.')
         echo -e "$ip_addr"
     else
-        ip_addr=$(ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.' \
+        ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.' \
             | sed '/inet\s/ s/inet\s.*/inet [REMOVED]/g' \
             | sed '/inet6\s.*/ s/inet6\s.*/inet6 [REMOVED]/g')
         echo -e "$ip_addr"
@@ -771,7 +848,7 @@ function CheckIpUp()
 {
     # Check to see if an exposed network device is up before going out to LAN. Called twice by GetNetworkingInfo()
     show_silent=$1        # show or silent. Eval is on: "show"
-    ip_devices_up=$(ip addr | grep -e '^[[:space:][1-9]:.*UP,LOWER_UP' | sed 's/.*virb.*:.*\|.*lo:.*LOOPBACK.*//g' | sed -e /^$/d)
+    ip_devices_up=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:.*UP,LOWER_UP' | sed 's/.*virb.*:.*\|.*lo:.*LOOPBACK.*//g' | sed -e /^$/d)
     if [ "$show_silent" == "show" ]
     then
         echo -e "  --- Network Device Status Summary from 'ip addr' ---  "
@@ -822,7 +899,7 @@ function GetDiskInfo()
     df -hT -x tmpfs -x devtmpfs | grep -v '/snap/'
     nl
     echo -e "${setansi}---------- Disk/Partition Information From 'fdisk':$ransi"
-    sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq
+    sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq
     nl
     echo -e "${setansi}---------- Disk/Partition Information From 'lsblk':$ransi"
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT,MODEL | grep -v '/snap/'
@@ -1409,12 +1486,26 @@ function GetWhere() {
 
 function GetLive 
 {
+    debug "GetLive: (Debug)" 1
     live=false
+    live_test1=$(mount | \
+        grep ' / ' | \
+        grep -o -e squashfs \
+            -e tmpfs \
+            -e aufs )
+    live_test2=$(df | \
+        grep ' /$'| \
+        grep -o -e overlay \
+            -e cow \
+            -e aufs \
+            -e rootfs \
+            -e /dev/mapper/live-rw \
+            -e union )
 
-    if [ $(mount | grep ' / ' | grep -e squashfs -e tmpfs) ]
+    if [ "$live_test1" != "" ]
     then
         live=true
-    elif [ $(df | grep ' /$'|grep -e overlay -e cow -e aufs -e rootfs -e /dev/mapper/live-rw) ]
+    elif [ "$live_test2" != "" ]
     then
         live=true
     fi
@@ -1431,19 +1522,31 @@ function GetLive
 
 function GetLocal 
 {
-    tmpstr="locally"    
-    pts=$(ps -e | grep -e "${0##*/}" | grep -om1 'pts/[0-9]*')
-    debug "PTS: $pts" 1
+    debug "GetLocal: (Debug)" 1
     
-    if [[ "$pts" != "" ]]
+    tmpstr="locally"
+    # Get pts session of where the script was run       
+    pts=$(echo $(ps -C "${0##*/}") | \
+        awk '{print $6}')
+
+    if [ "$pts" != "" ] 
     then
-        if [ $(ps -ef | grep "@$pts" | grep "sshd") ]
+        # Get pts session of the current user if they are
+        #     using a sshd session
+        ssh_test=$(ps -ef | \
+           grep "$USER@$pts" | \
+           grep "sshd" | \
+           awk '{print$9}' | \
+           sed 's/.*@//g' )
+    
+        # Compare the pts sessions
+        if [ "$pts" == "$ssh_test" ]
         then
-          tmpstr="via ssh"
+            tmpstr="via ssh"
         fi
     fi
 
-    echo "This script seems to be run $tmpstr"
+    echo "This script seems to be run $tmpstr (1)"
     nl
 }
 
@@ -1902,12 +2005,14 @@ logger()
 CheckArgs    # Check external arguments: [<ScriptName> arg1]
 CheckRoot    # Check if ran as root
 CheckTypeError
+#CheckPath
 CheckPrerequisites
 ## Report
 UserInput
 Writer less | less -R    # writing to less
 ## Post processing
 RmOldReport
+#RestorePath
 Writer | sed 's/<filter>/[REMOVED]/g' > "$report"     # Writing to file
 ## Epitaph
 echo "The result is stored in '$report'"
