@@ -883,7 +883,7 @@ GetMountInfo()
 
 function GetZfsInfo()
 {
-    zfs_part_type=$(sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris' )
+    zfs_part_type=$(sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris root|Solaris boot' )
     zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | grep -v '/snap/' | grep -m 1 'rpool')
     
     if [[ "$zfs_part_type" != "" ]]
