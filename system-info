@@ -865,9 +865,7 @@ function GetDiskInfo()
     echo -e "${setansi}---------- Mount Details of '/etc/fstab':$ransi"
     egrep -v '#' /etc/fstab
     nl
-    echo -e "${setansi}---------- Current Mount Details of 'mount':$ransi"
-    echo -e "$mount_info"
-    nl
+    GetMountInfo
 }
 
 GetMountInfo()
@@ -878,6 +876,9 @@ GetMountInfo()
     then
         mount_info=$(mount)
     fi
+    echo -e "${setansi}---------- Current Mount Details of 'mount':$ransi"
+    echo -e "$mount_info"
+    nl
 }
 
 function GetZfsInfo()
