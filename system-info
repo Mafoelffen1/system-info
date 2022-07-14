@@ -919,7 +919,7 @@ function GetStorageControllers() {
     # Based on this information: 
     #     lspci | grep --color=never -i -e 'IDE controller' -e 'SATA controller' -e 'SCSI controller' -e 'Non-Volatile memory controller' -e 'RAID Controller'
     echo -e "${setansi}---------- Storage Controller Information From 'lspci':$ransi"
-    cntrllr_busid_list=$($lspci_cmd | grep --color=never -i -e 'IDE ' \
+    cntrllr_busid_list=$(sudo lspci | grep --color=never -i -e 'IDE ' \
         -e 'SATA ' \
         -e 'SCSI ' \
         -e 'Non-Volatile memory ' \
@@ -931,7 +931,7 @@ function GetStorageControllers() {
         # Parse through list (array) and show detailed information on each
         for controller in ${cntrllr_busid_list}
         do
-            sudo $lspci_cmd -s $controller -vv
+            sudo lspci -s $controller -vv
             nl
         done
     else
@@ -968,7 +968,7 @@ function GetGraphicsEnv()
         # Use alternate method to display GPU info
         echo -e "${setansi}---------- Video Details from 'lspci':$ransi"
         #lspci | grep -i vga | sed 's/[0-9][0-9]:[0-9][0-9]\.[0-9] //g'
-        gpu_list=$($lspci_cmd | grep --color=never -i -e 'VGA' | \
+        gpu_list=$(sudo lspci | grep --color=never -i -e 'VGA' | \
             awk '{print $1}')
         # Modified for devices which have no formal GPU's
         if [ ! -z "$gpu_list" ]
@@ -976,7 +976,7 @@ function GetGraphicsEnv()
             # Parse through list )array) and show detailed information on each
             for gpu in ${gpu_list}
             do
-                sudo $lspci_cmd -s $gpu -vv
+                sudo lspci -s $gpu -vv
                 nl
             done
         else
