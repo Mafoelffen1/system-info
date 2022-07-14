@@ -403,7 +403,7 @@ function CheckPrerequisites()
                     check_prog=0
                     debug "'lspci' is in /sbin" 1
                 else 
-                    lspic_cmd="lspci"
+                    lspci_cmd="lspci"
                     debug "'lspci' was not found." 1
                 fi
             elif [[ "$Program" == "lsb_release" ]]
