@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00 beta, Script Date: 2022.07.13"
+version="Version: 02.00-00-rc1, Script Date: 2022.07.14"
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -170,78 +170,6 @@ function CheckArgs()
             echo -e "Option out of range."
             exit 1;
         fi
-    fi
-}
-
-function CheckPath() 
-{
-    # Copy PATH to variable. 
-    Path_Original=$PATH
-    PathEval=$Path_Original
-    debug "Path- $Path_Original" 1
-    
-    path_test=0
-    bin_exist=1
-    sbin_exist=1
-    path_append=""
-
-    ## Split on ':' treat as Array, so each member can be evaluated.
-    DFIS=$IFS
-    
-    while IFS=':' read -ra PathEval
-    do
-        for member in "${PathEval[@]}"
-        do
-            debug "Member- $member" 1
-            if [ "$member" == "/bin" ]
-            then
-                debug "bin found" 1
-                bin_exist=0                
-            fi
-            if [ "$member" == "/sbin" ]
-            then
-                debug "sbin found" 1
-                sbin_exist=0                
-            fi
-        done
-    done <<< $Path_Original
-    
-    IFS=$DIFS
-    
-    if [ $bin_exist -eq 1 ]
-    then
-        debug "bin not found" 1
-        path_append=$path_append":/bin"
-        path_test=1
-    fi
-    
-    if [ $sbin_exist -eq 1 ]
-    then
-        debug "sbin not found" 1
-        path_append=$path_append":/sbin"
-        path_test=1
-    fi
-
-    debug "path_append string: $path_append" 1
-
-    if [ $path_test -eq 1 ]
-    then
-        export PATH=$PATH$path_append
-        echo -e "Reseting PATH variable. The 'system-info' Script will restore "
-        echo -e "the orgianal PATH at the completion of running the script. "
-        echo
-        debug "Reset Path- $PATH" 1
-    else
-        debug "Original Path- $PATH" 1
-    fi
-}
-
-function RestorePath()
-{
-    # If Path has been fixed, restore path to original
-    if [ "$Path_Orignal" != "$PATH" ]
-    then
-        export PATH=$Path_Original
     fi
 }
 
@@ -938,8 +866,18 @@ function GetDiskInfo()
     egrep -v '#' /etc/fstab
     nl
     echo -e "${setansi}---------- Current Mount Details of 'mount':$ransi"
-    mount | grep '^/dev' | sort
+    echo -e "$mount_info"
     nl
+}
+
+GetMountInfo()
+{
+    mount_info=$(mount | grep '^/dev' | sort)
+    
+    if [ "$mount_info" == "" ]
+    then
+        mount_info=$(mount)
+    fi
 }
 
 function GetZfsInfo()
@@ -1164,11 +1102,8 @@ function GetOtherDetails()
     id -un
     id |tr ' ' '\n'|sed 's/,/, /g'| fold -sw 80 |sed 's/ //g'
     nl
-    GetLiveCD
     GetLive
-    GetWhere
     GetLocal
-    GetSessionType
     GetCmdLine
 }
 
@@ -1474,6 +1409,7 @@ function GetFlatpakInstalled()
 }
 
 function GetLiveCD() {
+    # Old - Deprecated TODO = Remove after testing is complete.
     livecd_test=""
     boot_data=$(mount | grep " / " | grep 'squashfs')
     if [ -z "$boot_data" ] 
@@ -1488,6 +1424,7 @@ function GetLiveCD() {
 }
 
 function GetWhere() {
+    # Old _ Deprecated - TODO Remove after testing is over
     # Create temp file
     ssh_data=$(mktemp /tmp/ssh_data-XXXXX)
     # Redirect/Populate output to temp file
@@ -1506,9 +1443,6 @@ function GetWhere() {
     echo -e "The 'system-info' script was run $ssh_test"
     nl
 }
-
-######################
-### START PROPOSED ###
 
 function GetLive 
 {
@@ -1578,6 +1512,7 @@ function GetLocal
 
 function GetSessionType
 {
+    # Was proposed TODO remove if not needed, after testing
     SESSION_TYPE=local
     session_test=$(ps -o comm= -p $PPID)
     
@@ -1594,9 +1529,6 @@ function GetSessionType
     echo -e "This script was run from a $SESSION_TYPE session"
     nl
 }
-
-### END PROPOSED ###
-####################
 
 function GetCmdLine() {
     cmd_line=$(awk '{print $0}' /proc/cmdline)
