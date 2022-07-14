@@ -853,7 +853,7 @@ function GetDiskInfo()
     df -hT -x tmpfs -x devtmpfs | grep -v '/snap/'
     nl
     echo -e "${setansi}---------- Disk/Partition Information From 'fdisk':$ransi"
-    sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq
+    sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq
     nl
     echo -e "${setansi}---------- Disk/Partition Information From 'lsblk':$ransi"
     lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT,MODEL | grep -v '/snap/'
@@ -883,7 +883,7 @@ GetMountInfo()
 
 function GetZfsInfo()
 {
-    zfs_part_type=$(sudo /sbin/fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris root|Solaris boot' )
+    zfs_part_type=$(sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris root|Solaris boot' )
     zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | grep -v '/snap/' | grep -m 1 'rpool')
     
     if [[ "$zfs_part_type" != "" ]]
