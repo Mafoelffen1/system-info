@@ -33,7 +33,8 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc1, Script Date: 2022.07.14"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.15"
+exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
 arg2=$2
@@ -111,7 +112,8 @@ function CheckRoot()
             echo "Running Script: ${sname} $version"
         else 
             echo "Password was incorrect for sudo elevated rights. Exiting Script."
-            exit 1
+            exit_code=1
+            exit $exit_code
         fi
     fi
 }
@@ -167,8 +169,9 @@ function CheckArgs()
         then 
             verbosity=$arg2
         else
-            echo -e "Option out of range."
-            exit 1;
+            echo -e "Startup Option out of range."
+            exit_code=1
+            exit $exit_code;
         fi
     fi
 }
@@ -394,16 +397,16 @@ function CheckPrerequisites()
                 # For Slackware. lspci is in /sbin, instead of /bin
                 if [ -e /bin/lspci ]
                 then
-                    lspci_cmd="/bin/lspci"
+                    #lspci_cmd="/bin/lspci"
                     check_prog=0
                     debug "'lspci' is in /bin" 1
                 elif [ -e /sbin/lspci ]
                 then
-                    lspci_cmd="/sbin/lspci"
+                    #lspci_cmd="/sbin/lspci"
                     check_prog=0
                     debug "'lspci' is in /sbin" 1
                 else 
-                    lspci_cmd="lspci"
+                    #lspci_cmd="lspci"
                     debug "'lspci' was not found." 1
                 fi
             elif [[ "$Program" == "lsb_release" ]]
@@ -474,10 +477,13 @@ function CheckPrerequisites()
             if [[ $ans =~ ^[Ee]$ ]]
             then
                 echo -e "Please install the missing programs listed above before rerunning script." 
-                exit 1
+                debug "User choose to exit after missing programs." 1
+                exit_code=0
+                exit $exit_code
             elif [[ ${ans,} =~ ^[Cc]$ ]]
             then
                 echo -e "Some task(s) will not work, but I'll do the best possible, continuing ..." 
+                debug "User choose to continue while missing some programs." 1
                 sleep 1
             fi
         done
@@ -1769,16 +1775,18 @@ function PasteNc()
 
 function CheckPasterProgs()
 {
+    # The order set here will set preference order.
+    #     If you change the order here, reset the order in DoPaste() to match.
     if [ -e /usr/bin/pastebinit ]
     then
         paste_prog=1;
-    elif [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
-    then
-        paste_prog=2;
     elif [ -e /usr/bin/wget ]
     then
-        paste_prog=3;
+        paste_prog=2;
     elif [ -e /usr/bin/nc ] || [ -e /bin/nc ]
+    then
+        paste_prog=3;
+    elif [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
     then
         paste_prog=4;
     else
@@ -1797,13 +1805,13 @@ function DoPaste()
             PastePastebinit
             ;;
         2)
-            PasteCurl
-            ;;
-        3)
             PasteWget
             ;;
-        4)
+        3)
             PasteNc
+            ;;
+        4)
+            PasteCurl
             ;;
         *)
             echo -e "Something went wrong. Error out of range."
@@ -1865,18 +1873,32 @@ function Paster()
                  debug "Paste_done: $paste_done" 1
                  if $paste_done
                  then
-                     echo -e "Uploaded Report: ${startt}:" >> "$linklog"
-                     echo -e "$blueback Upload successful $resetvid"
-                     nl
-                     echo -e "The link to the pastebin is saved in: '$linklog'"
-                     nl
-                     echo -e "View at: $return_url" | tee -a "$linklog"
-                     nl
+                     # Check $return_url for NULLL
+                     if [ "$return_url" != "" ]
+                     then
+                         echo -e "Uploaded Report: ${startt}:" >> "$linklog"
+                         echo -e "$blueback Upload successful $resetvid"
+                         nl
+                         echo -e "The link to the pastebin is saved in: '$linklog'"
+                         nl
+                         echo -e "View at: $return_url" | tee -a "$linklog"
+                         nl
+                     else
+                         echo -e "$redback Upload process failed $resetvid"
+                         echo -e "The upload utility reported that the upload was susccessful, "
+                         echo -e "but the host did not return a link to view it."
+                         nl
+                         echo -e "Upload the file manually: 'copy & paste' to"
+                         echo -e "https://paste.ubuntu.com/"
+                         nl
+                         exit_code=101
+                     fi
                  else
-                    echo -e "$redback Upload failed $resetvid"
+                     echo -e "$redback Upload failed $resetvid"
                      echo -e "Upload the file manually: 'copy & paste' to"
                      echo -e "https://paste.ubuntu.com/"
                      nl
+                     exit_code=102
                  fi
              else
                     echo -e "No connection to an outside URL. " | tee -a "$linklog"
@@ -1885,6 +1907,7 @@ function Paster()
                     echo -e "Upload the file manually: 'copy & paste' to"
                     nl
                     echo -e "https://paste.ubuntu.com/"
+                    exit_code=103
              fi
          fi
     else
@@ -1895,6 +1918,7 @@ function Paster()
         nl
         echo -e "https://paste.ubuntu.com/"
         nl
+        exit_code=104
     fi
 }
 
@@ -1978,7 +2002,7 @@ echo "The result is stored in '$report'"
 ## Optional upload to pastebin paste.ubuntu.com
 Paster
 ArchiveReport
-exit
+exit $exit_code
 
 
 
