@@ -1504,7 +1504,8 @@ function GetLocal
            grep "$USER@$pts" | \
            grep "sshd" | \
            awk '{print$9}' | \
-           sed 's/.*@//g' )
+           sed 's/.*@//g' \
+           2> /dev/null)
     
         # Compare the pts sessions
         if [ "$pts" == "$ssh_test" ]
