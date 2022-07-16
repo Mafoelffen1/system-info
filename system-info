@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.15"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.16"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -991,13 +991,13 @@ function GetGraphicsEnv()
         fi
     fi
     echo -e "   --- Graphics Environment Continued from 'various graphics ENVs' ----" 
-    if [ $XDG_CURRENT_DESKTOP ] 
+    if [ "$XDG_CURRENT_DESKTOP" != "" ] 
     then 
         echo -e "The Current Configured Destop is: $XDG_CURRENT_DESKTOP " 
     else
         echo -e "The Current Configured Desktop is: <Not Populated> " 
     fi
-    if [ $DESKTOP_SESSION ]
+    if [ "$DESKTOP_SESSION" != "" ]
     then
         echo -e "The Current Desktop Session is: $DESKTOP_SESSION "
         xmode=$(xrandr -q 2> /dev/null | egrep --color=never -e 'Screen' -e 'connected ')
@@ -1006,12 +1006,12 @@ function GetGraphicsEnv()
     else
         echo -e "The Current Desktop Session is: <Not Populated> " 
     fi
-    if [ $XDG_SESSION_TYPE ]
+    if [ "$XDG_SESSION_TYPE" != "" ]
     then
         echo -e "The Current Session Type is: $XDG_SESSION_TYPE " 
     else
         session_type=$(ps -e | egrep -e 'tty' | egrep -e 'x11|Xorg|wayland' | awk '{print $4}')
-        if [ $session_type ]
+        if [ "$session_type" != "" ]
         then
             echo -e "The Current Session Type is: $session_type " 
         else
@@ -1030,7 +1030,7 @@ function GetGraphicsEnv()
     if [ "$get_console_desktop" == "Desktop" ]
     then
         desktop_theme=$(gsettings get org.gnome.desktop.interface gtk-theme)
-        if [ $desktop_theme ]
+        if [ "$desktop_theme" != "" ]
         then
             echo -e "The Current Desktop Theme: $desktop_theme" 
         else
