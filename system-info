@@ -1110,7 +1110,7 @@ function GetOtherDetails()
     id |tr ' ' '\n'|sed 's/,/, /g'| fold -sw 80 |sed 's/ //g'
     nl
     GetLive
-    GetLocal
+    GetSessionType
     GetCmdLine
 }
 
@@ -1520,7 +1520,7 @@ function GetLocal
 
 function GetSessionType
 {
-    # Was proposed TODO remove if not needed, after testing
+    # Was proposed TODO Testing
     SESSION_TYPE=local
     session_test=$(ps -o comm= -p $PPID)
     
