@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.16"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.17"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -422,7 +422,6 @@ function CheckPrerequisites()
             elif [[ "$Program" == "ubuntu-drivers" ]]
             then
                 # Check if it is Ubuntu Flavor, else not needed
-                # placeholder
                 if [[ "$ubuntu_flavor" == "1" ]]
                 then
                     check_prog=0;
@@ -1415,42 +1414,6 @@ function GetFlatpakInstalled()
     nl
 }
 
-function GetLiveCD() {
-    # Old - Deprecated TODO = Remove after testing is complete.
-    livecd_test=""
-    boot_data=$(mount | grep " / " | grep 'squashfs')
-    if [ -z "$boot_data" ] 
-    then
-       livecd_test="an installed system."
-    else
-       # Updated terminology: "Live Image Environment", acrconym "LIE"
-       livecd_test="a Live Image Environment (LIE)."
-    fi
-    echo -e "The 'system-info' script was booted from $livecd_test"
-    nl
-}
-
-function GetWhere() {
-    # Old _ Deprecated - TODO Remove after testing is over
-    # Create temp file
-    ssh_data=$(mktemp /tmp/ssh_data-XXXXX)
-    # Redirect/Populate output to temp file
-    #w | grep ' w -sh' | grep -v ' pts/0' | grep --color=never ' w -sh ' > $ssh_data
-    w -sh $USER | grep -v ' pts/0' | awk '/ pts\// && / w -sh /' > $ssh_data
-    # Ask question
-    if [ -z "$(awk '{print $0}' $ssh_data)" ]
-    then
-        ssh_test="locally on the system"
-    else
-        ssh_test="remotely through an ssh connection."
-    fi
-    # Remove temp file
-    rm -f $ssh_data
-    # Give answer
-    echo -e "The 'system-info' script was run $ssh_test"
-    nl
-}
-
 function GetLive 
 {
     debug "GetLive: (Debug)" 1
@@ -1479,11 +1442,11 @@ function GetLive
 
     if $live
     then
-        echo "This seems to be a Live Image Environment (LIE)."
+        live_installed="a Live Image Environment (LIE)."
     else
-        echo "This seems to be an installed system"
+        live_installed="an installed system"
     fi
-
+    echo -e "The 'system-info' script was booted from $live_installed"
     nl
 }
 
@@ -1491,7 +1454,7 @@ function GetLocal
 {
     debug "GetLocal: (Debug)" 1
     
-    tmpstr="locally"
+    tmpstr="locally."
     # Get pts session of where the script was run       
     pts=$(echo $(ps -C "${0##*/}") | \
         awk '{print $6}')
@@ -1506,35 +1469,22 @@ function GetLocal
            awk '{print$9}' | \
            sed 's/.*@//g' \
            2> /dev/null)
-    
+        ssh_user=$(ps -ef | \
+           grep "$USER@$pts" | \
+           grep "sshd" | \
+           awk '{print$9}' | \
+           sed 's/@,*//g' \
+           2> /dev/null)
         # Compare the pts sessions
         if [ "$pts" == "$ssh_test" ]
         then
-            tmpstr="via ssh"
+            tmpstr="via ssh."
         fi
     fi
-
-    echo "This script seems to be run $tmpstr (1)"
-    nl
-}
-
-function GetSessionType
-{
-    # Was proposed TODO Testing
-    SESSION_TYPE=local
-    session_test=$(ps -o comm= -p $PPID)
-    
-    if [ -n "$SSH_CLIENT" ] || [ -n "$SSHTTY" ]
-    then
-        SESSION_TYPE=remote/ssh
-    else
-        case $session_test in
-            sshd|*/sshd)
-                SESSION_TYPE=remote/ssh
-                ;;
-        esac
-    fi
-    echo -e "This script was run from a $SESSION_TYPE session"
+    debug "PTS: $pts" 1
+    debug "ssh_test: $ssh_test" 1
+    debug "Current User: $USER" 1
+    echo "The 'sysetm-info' script seems to be running $tmpstr "
     nl
 }
 
@@ -1989,19 +1939,20 @@ logger()
 CheckArgs    # Check external arguments: [<ScriptName> arg1]
 CheckRoot    # Check if ran as root
 CheckTypeError
-#CheckPath
+#CheckPath ## <-- This currently breaks CheckPrerequisites()
 CheckPrerequisites
 ## Report
 UserInput
 Writer less | less -R    # writing to less
 ## Post processing
 RmOldReport
-#RestorePath
+#RestorePath ## This needed if we ever get CheckPath() working
 Writer | sed 's/<filter>/[REMOVED]/g' > "$report"     # Writing to file
 ## Epitaph
 echo "The result is stored in '$report'"
-## Optional upload to pastebin paste.ubuntu.com
+## Optional upload to various PasteBins
 Paster
+## Optional - Archive Report if size larger than 19.5k
 ArchiveReport
 exit $exit_code
 
@@ -2016,5 +1967,8 @@ exit $exit_code
 #
 # Add comments as script documentation:
 #   - Document logic flow
+#
+# Add DEBUG statements:
+#   - To be able to step through logic flow for maintence.
 #
 # Possibly add more for LVM, ZFS, mdadm, and LUKS information(?)
