@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.17"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.18"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1109,7 +1109,7 @@ function GetOtherDetails()
     id |tr ' ' '\n'|sed 's/,/, /g'| fold -sw 80 |sed 's/ //g'
     nl
     GetLive
-    GetSessionType
+    GetLocal
     GetCmdLine
 }
 
