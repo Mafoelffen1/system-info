@@ -1483,6 +1483,7 @@ function GetLocal
     fi
     debug "PTS: $pts" 1
     debug "ssh_test: $ssh_test" 1
+    debug "ssh_user: $ssh_user" 1
     debug "Current User: $USER" 1
     echo "The 'sysetm-info' script seems to be running $tmpstr "
     nl
