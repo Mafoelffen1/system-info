@@ -1464,7 +1464,7 @@ function GetLocal
         # Get pts session of the current user if they are
         #     using a sshd session
         ssh_test=$(ps -ef | \
-           grep "$USER@$pts" | \
+           grep "@$pts" | \
            grep "sshd" | \
            awk '{print$9}' | \
            sed 's/.*@//g' \
