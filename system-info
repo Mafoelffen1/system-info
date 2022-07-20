@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.18"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.20"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -319,28 +319,42 @@ function CheckPrerequisites()
             #    Renamed variable $Program in this stub here to ProgramSof (for "Program: Snap Or Flatpak".
             for ProgramSoF in ${Programs_SnapBin}
             do
-                ## This first part is more generic code for future things moved to the Snap Store...
-                if [[ "$(snap list $ProgramSoF 2> /dev/null )" != "no matching snaps installed" ]]
-                then
-                    check_prog=0;
-                    debug "$ProgramSoF found in Snap" 1
-                elif [[ "$(flatpk list $ProgramSoF 2> /dev/null )" != "no matching flatpaks installed" ]]
-                then
-                    check_prog=0
-                    debug "$ProgramSoF found in FlatPak" 1
-                else
-                    debug "$ProgramSoF not found in an Alternative Package Store" 1
-                fi
+                snap_test=$(snap list $ProgramSof 2>&1 )
+                snap_exit=$?
+                flatpak_test=$(flatpak list $ProgramSof 2>&1 )
+                flatpak_exit=$?
+
+                ## This first part is more generic code for future things moved to the Snap Store...                
+                #if [[ "$snap_test" != *"no matching snaps installed"* ]] || [ $snap_exit -eq 0 ]
+                #then
+                #    check_prog=0;
+                #    debug "$ProgramSoF found in Snap" 1
+                #elif [[ "$flatpak_test 2>&1 )" != "no matching flatpaks installed" ]] || [ $flatpak_exit -eq 0 ]
+                #then
+                #    check_prog=0
+                #    debug "$ProgramSoF found in FlatPak" 1
+                #else
+                #    debug "$ProgramSoF not found in an Alternative Package Store" 1
+                #fi
+                ##
                 
-                # This second part if=s just for now, where 'curl' might be from Snap
+                # This part is just for now, where 'curl' might be from Snap
                 if [[ "$ProgramSoF" == "curl" ]]
                 then
                     if [ -e /usr/bin/curl ] || [ -e /snap/bin/curl ]
                     then
-                        check_prog=0;
+                        check_prog=0
                         debug "'curl' was found in either /usr/bin or /snap/bin" 1
+                    elif [ $snap_exit -eq 0 ]
+                    then
+                        check_prog=0
+                        debug "'curl' found in Snap" 1
+                    elif [ $flatpak_exit -eq 0 ]
+                    then
+                        check_prog=0
+                        debug "'curl' found in Flatpak" 1
                     else
-                        check_prog=1;
+                        check_prog=1
                         debug "'curl' was not found in either /usr/bin or /snap/bin" 1
                     fi
                 fi
@@ -1370,16 +1384,18 @@ function GetSnapInstalled()
     if [[ "$snap_exit" == "0" ]]
     then       
         snap_list=$(snap list | awk '{print $1}' | grep -v 'Name')
-        debug "Snaplist count: ${#snap_list[@]}" 1
+        snap_count=0
         
         if [ "$snap_list" == "" ] 
         then
             echo -e "No Snap Packages Installed"
         else
-            for snap_package in "${snap_list}"
+            for snap_package in "${snap_list[@]}"
             do 
                 echo "$snap_package"
+                ((snap_count++))
             done
+            debug "Snaplist count: $snap_count" 1
         fi
     else
         echo -e "Snap is not installed"
@@ -1447,6 +1463,7 @@ function GetLive
         live_installed="an installed system"
     fi
     echo -e "The 'system-info' script was booted from $live_installed"
+    debug "Live Installed: $live_installed" 1
     nl
 }
 
