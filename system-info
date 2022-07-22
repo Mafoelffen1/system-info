@@ -625,7 +625,7 @@ function FixNonAsciiVar() {
     VarContent=$2
 
     # Check if field contains non ascii characters
-    if [[ $VarContent *[!:ascii:]* ]]
+    if [[ "$VarContent" == "*[!:ascii:]*" ]]
     then
         debug "$VarName contains Non-ASCII characters." 1
         debug "Content= $VarContent" 1
