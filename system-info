@@ -1114,6 +1114,7 @@ function GetSoundDevices() {
         echo -e "No sound devices found. Also check in 'lsusb' section."
         nl
     fi
+    echo -e "For more detailed audio information, get and run the script at: http://www.alsa-project.org/alsa-info.sh "
 }
 
 function GetRepositories()
