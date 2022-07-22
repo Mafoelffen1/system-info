@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.20"
+version="Version: 02.00-00-rc2, Script Date: 2022.07.22"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -43,6 +43,7 @@ sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
 report="$HOME/${sname}.txt"
 # Set locale language settings
 LANG=C
+LC_CTYPE=C
 # Set a pretty ANSI screen decoration for displaying the report onscreen
 blueback="\0033[1;37;44m"
 redback="\0033[1;37;41m"
@@ -130,7 +131,7 @@ function CheckArgs()
     then
         # Help Panel: At the commandline: [<ScriptName> -h or --help] returns this usage panel, then exits. 
         echo "Running Script: ${sname} $version"
-        echo -e "md5sum: "$(md5sum $sname | sed 's/system.*//g' )
+        echo -e "md5sum: "$(md5sum ${sname} | sed 's/system.*//g' )
         nl
         echo -e "Description: The Ubuntu Forums \"system-info\" script queries the users "
         echo -e "computer and prepares a report, so that Ubuntu Forums Community Members "
@@ -151,7 +152,7 @@ function CheckArgs()
         echo -e "running, you will be asked to enter your userID's password."
         nl
         echo -e "It then asks the user 2 questions to describe the problem they are having, "
-        echo -e "then creates $sname.txt in their Home directory."
+        echo -e "then creates ${sname}.txt in their Home directory."
         nl
         echo -e "Will check programs used by this script, and give the user the option to "
         echo -e "quit to install anything it finds missing. Will give the user the option "
@@ -186,11 +187,13 @@ function CheckTypeError() {
        echo -e "This script will run, but may display some errors."
        nl
    fi
+   unset TypeError
 }
 
 function CheckDebianBranch()
 {
     # Check if OS is in Debian Branch
+    # var debian_branch is global
     if [ -f /etc/debian_version ]
     then
         debian_branch=0
@@ -213,6 +216,8 @@ function CheckUbuntuFlavor()
         ubuntu_flavor=1
     fi
     debug "CheckUbuntuFlavor(). Value: $ubuntu_found" 1
+    # var ubuntu_flavor is global
+    unset ubuntu_found
 }
 
 function GetReleaseDescription()
@@ -249,6 +254,7 @@ function GetReleaseDescription()
    fi
    
    nl
+   unset os_name
 }
 
 function CheckPrerequisites()   
@@ -302,10 +308,10 @@ function CheckPrerequisites()
     Programs_SnapBin='
         curl'
         
-    check_prog=1;
-    check_mokutil=1;
-    check_lshw=0;
-    check_lsb_release=0;
+    check_prog=1; # global scope
+    check_mokutil=1; # global scope
+    check_lshw=0; # global scope
+    check_lsb_release=0; # global scope
     
     CheckDebianBranch
     CheckUbuntuFlavor
@@ -359,6 +365,14 @@ function CheckPrerequisites()
                     fi
                 fi
             done
+            ## Begin Cleanup
+            unset snap_test
+            unset snap_exit
+            unset flatpak_test
+            unset flatpak_exit
+            unset ProgramSoF
+            unset Programs_SBIN
+            ## End Cleanup
 
             if [[ "$check_prog" == "1" ]]
             then
@@ -605,6 +619,22 @@ function GetCPU()
     fi
 }
 
+function FixNonAsciiVar() {
+    # Call format to this function is: FixNonAsciiVar <var_name> <var_content>
+    VarName=$1
+    VarContent=$2
+
+    # Check if field contains non ascii characters
+    if [[ $VarContent *[!:ascii:]* ]]
+    then
+        debug "$VarName contains Non-ASCII characters." 1
+        debug "Content= $VarContent" 1
+        # Remove non-ascii chars from string
+        VarContent=$(echo -e "$VarContent" | sed 's/[\x80-\xFF//g')
+        debug "Fixed Content: $VarContent" 1
+    fi
+}
+
 function GetDmi()
 {
     # Checks for SMBIOS compliance and values for. Called once by GetMachineInfo().
@@ -622,6 +652,7 @@ function GetDmi()
 		board_asset_tag'
 
     echo -e "------------------ SMBIOS Information from '/sys/class/dmi/id/' "
+    debug "SMBIOS Information" 1
     
     if [ -d $smbios_compliant ]
     then
@@ -643,9 +674,12 @@ function GetDmi()
         do
             content=$(sudo head -n 1 $smbios_compliant$dmi_var)
             title=$(echo $dmi_var | sed -e 's/_/ /g' | sed -e 's/\b\(.\)/\u\1/g' ) 
-            if [ $dmi_var == "board_version" ]
-            then
             
+            # Check for Non-ASCII characters in content and remove them.
+            FixNonAsciiVar $dmi_var $content
+            
+            if [ $dmi_var == "board_version" ]
+            then               
                 if [[ "$content" == "1234567890" ]]
                 then
                     content=""
@@ -875,9 +909,11 @@ function GetDiskInfo()
     sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq
     nl
     echo -e "${setansi}---------- Disk/Partition Information From 'lsblk':$ransi"
-    lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT,MODEL | grep -v '/snap/'
+    # Note: sed replacement added to switch out non-ascii charaters of 'lsblk'. 
+    #     'paste.ubuntu.com' does not accept non-ascii characters
+    lsblk -o NAME,SIZE,FSTYPE,LABEL,MOUNTPOINT,MODEL | grep -v '/snap/' | sed 's/^[\|,`]-/\|_/g'
     echo -e "   ------- 'lsblk' information continued ..."
-    lsblk -o NAME,HOTPLUG,PARTUUID,UUID | grep -v 'loop'
+    lsblk -o NAME,HOTPLUG,PARTUUID,UUID | grep -v 'loop' | sed 's/^[\|,`]-/\|_/g'
     nl
     GetZfsInfo
     GetLuksInfo
@@ -1057,6 +1093,27 @@ function GetGraphicsEnv()
     echo -e "\tTTY#\tUsed By" 
     echo -e "$virt_ttys" 
     nl
+}
+
+function GetSoundDevices() {
+    # Retreive Sound device ID's 
+    echo -e "${setansi}---------- Sound Device Information From 'lspci':$ransi"
+    sound_device_list=$(sudo -i lspci | \
+        grep --color=never -i -e 'audio ' | \
+        awk '{print $1}')
+    # Make sure not NULL
+    if [ ! -z "$sound_device_list" ]
+    then
+        # Parse through list (array) and show detailed information on each
+        for sound_device in ${sound_device_list}
+        do
+            sudo -i lspci -s $sound_device -vv
+            nl
+        done
+    else
+        echo -e "No sound devices found. Also check in 'lsusb' section."
+        nl
+    fi
 }
 
 function GetRepositories()
@@ -1615,7 +1672,7 @@ function ArchiveReport() {
         report_size=$(wc -c $report | awk '{print $1}')
         if [ $report_size -ge 19500 ]
         then 
-            echo -e "'$sname.txt' is larger than 19.5kB. ($report_size bytes)"
+            echo -e "'${sname}.txt' is larger than 19.5kB. ($report_size bytes)"
             nl
             echo -e "If you want to attach to a post on Ubuntu Forums as an attachment, "
             echo -e "you will need to compress the report."
@@ -1629,17 +1686,17 @@ function ArchiveReport() {
                 debug "User answered $ans" 1
                 if [[ $ans =~ ^[Yy]$ ]]
                 then
-                    echo -e "Compressing '$sname.txt' to archive file '$HOME/$sname.tar.gz'."
+                    echo -e "Compressing '${sname}.txt' to archive file '$HOME/${sname}.tar.gz'."
                     nl
                     # Remove old archive file, if present
-                    if [ -f $HOME/$sname.tar.gz ]
+                    if [ -f $HOME/${sname}.tar.gz ]
                     then 
-                        rm -f  $HOME/$sname.tar.gz
+                        rm -f  $HOME/${sname}.tar.gz
                     fi
                     cwd=$(pwd)    # Save current directory
                     cd $HOME
                     # Create Archive without any parent direcetories
-                    tar -czvf $sname.tar.gz $sname.txt
+                    tar -czvf ${sname}.tar.gz ${sname}.txt
                     exit_code=$?
                     # Check if archive was created successfully (catch exit code)
                     if [ $exit_code -eq 0 ]
@@ -1682,6 +1739,7 @@ function Writer
     GetDiskInfo
     GetUsb
     GetGraphicsEnv
+    GetSoundDevices
     GetRepositories
     GetOtherDetails
     if [[ "$less_status" != "less" ]]
