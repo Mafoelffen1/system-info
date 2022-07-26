@@ -1768,12 +1768,17 @@ function Pause()
 function ArchiveReport() {
     #Check if uploaded (successfully)...
     # $check-paste is 1 at start (not uploaed), 0 if upload was successful.
-    uploaded=$check_paste  # Local Var
+    uploaded=$check_paste  # Global Var
+    report_size=$(wc -c $report | \
+        awk '{print $1}')  # Local Var
+    debug "Report size: $report_size" 1
+
     if [ $uploaded -eq 1 ] 
     then
         # Check size of report file, must be less than 19.5kB
         report_size=$(wc -c $report | \
             awk '{print $1}')  # Local Var
+        debug "Report size: $report_size" 1
         if [ $report_size -ge 19500 ]
         then 
             echo -e "'${sname}.txt' is larger than 19.5kB. ($report_size bytes)"
@@ -1782,7 +1787,7 @@ function ArchiveReport() {
             echo -e "you will need to compress the report."
             nl
             # Prompt User       
-            ans=""
+            ans=
             while [ "$ans" != "y" ] && [ "$ans" != "Y" ] && [ "$ans" != "n" ] && [ "$ans" != "N" ]
             do
                 read -erp "Would you like to archive the report? <y/N> " ans 
@@ -1823,7 +1828,7 @@ function ArchiveReport() {
                        Sleep 1
                     fi
                 fi
-                $ans=""
+
             done
         else
             echo "Report 'size' check complete. ($report_size bytes)"
@@ -2059,13 +2064,13 @@ function Paster()
 function ReportCleaner()
 {
     # Clean the report from non-ascii characters. Called once by Main.
-	report_cleaned=$(mktemp /tmp/report_cleaned-XXXXX)
-	mv "$report" "$tmprapp"
-	tr -cd '\11\12\40-\176' < "$report_cleaned" > "$report"
+	report_original=$(mktemp /tmp/report_cleaned-XXXXX)
+	mv "$report" "$report_original"
+	tr -cd '\11\12\40-\176' < "$report_original" > "$report"
 	sleep 1
 	# For debug purposes, comment out this next line
-	rm "$report_cleaned"
-	unset -v report_cleaned
+	rm "$report_original"
+	#unset -v report_cleaned
 }
 
 # The following Basic Logger was based on public domain code 
