@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc2, Script Date: 2022.07.22"
+version="Version: 02.00-00-rc3, Script Date: 2022.07.26"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -100,10 +100,11 @@ function CheckRoot()
 {
     clear -x;
     ## Check if ran as root. Runs at startup. Called by Main()
-    if [[ "$EUID" == 0 ]]
+    if [[ "$EUID" == 0 ]] || [ $UID -eq 0 ]
     then 
         echo -e "$redback Do not run this script with sudo or as root$resetvid"
-        exit
+        exit_code=106
+        exit $exit_code
     else
         echo -e "This script needs some parts of it to run with elevated permissions."
         echo -e "Please enter your password for that to happen."
@@ -113,7 +114,7 @@ function CheckRoot()
             echo "Running Script: ${sname} $version"
         else 
             echo "Password was incorrect for sudo elevated rights. Exiting Script."
-            exit_code=1
+            exit_code=107
             exit $exit_code
         fi
     fi
@@ -187,7 +188,7 @@ function CheckTypeError() {
        echo -e "This script will run, but may display some errors."
        nl
    fi
-   unset TypeError
+   unset -v TypeError
 }
 
 function CheckDebianBranch()
@@ -217,7 +218,7 @@ function CheckUbuntuFlavor()
     fi
     debug "CheckUbuntuFlavor(). Value: $ubuntu_found" 1
     # var ubuntu_flavor is global
-    unset ubuntu_found
+    unset -v ubuntu_found
 }
 
 function GetReleaseDescription()
@@ -254,7 +255,7 @@ function GetReleaseDescription()
    fi
    
    nl
-   unset os_name
+   unset -v os_name
 }
 
 function CheckPrerequisites()   
@@ -291,6 +292,7 @@ function CheckPrerequisites()
     	ping
     	id
     	hostname
+    	hostnamectl
     	lsblk
     	lsusb
     	sleep
@@ -312,6 +314,7 @@ function CheckPrerequisites()
     check_mokutil=1; # global scope
     check_lshw=0; # global scope
     check_lsb_release=0; # global scope
+    check_hostname=0; # global scope
     
     CheckDebianBranch
     CheckUbuntuFlavor
@@ -365,14 +368,8 @@ function CheckPrerequisites()
                     fi
                 fi
             done
-            ## Begin Cleanup
-            unset snap_test
-            unset snap_exit
-            unset flatpak_test
-            unset flatpak_exit
-            unset ProgramSoF
-            unset Programs_SBIN
-            ## End Cleanup
+            ## Cleanup Local Variables
+            unset -v snap_test snap_exit flatpak_test flatpak_exit ProgramSoF Programs_SBIN
 
             if [[ "$check_prog" == "1" ]]
             then
@@ -446,7 +443,16 @@ function CheckPrerequisites()
                 #check_prog=0;
                 check_lsb_release=1
                 debug "Utility 'lsb_release' is not here" 1
-                
+            elif [[ "$Program" == "hostname" ]]
+            then
+                if [ -e /usr/bin/hostnamectl ]
+                then
+                    check_prog=0
+                    check_hostname=1
+                else
+                    check_hostname=2
+                    debug "Both 'hostname' and 'hostnamectl' where not found." 1
+                fi
             elif [[ "$Program" == "ubuntu-drivers" ]]
             then
                 # Check if it is Ubuntu Flavor, else not needed
@@ -580,7 +586,7 @@ function GetMachineInfo()
     GetDmi
     GetMem
     GetNetworkingInfo
-    GetFQDN
+    GetHostname
     nl 
 }
 
@@ -621,18 +627,21 @@ function GetCPU()
 
 function FixNonAsciiVar() {
     # Call format to this function is: FixNonAsciiVar <var_name> <var_content>
-    VarName=$1
-    VarContent=$2
+    VarName=$1 # Local Var
+    VarContent=$2 # Global Var
 
     # Check if field contains non ascii characters
+    # Remember to set whatever the original passed varaible equal to $VarContent after the call
+    #     to catch the fixed return value.
     if [[ "$VarContent" == "*[!:ascii:]*" ]]
     then
         debug "$VarName contains Non-ASCII characters." 1
         debug "Content= $VarContent" 1
         # Remove non-ascii chars from string
-        VarContent=$(echo -e "$VarContent" | sed 's/[\x80-\xFF//g')
+        VarContent=$(sed 's/[\d0-\d8,\d11-\d31,\d127-\d255]//g' <<< $VarContent )
         debug "Fixed Content: $VarContent" 1
     fi
+    unset $VarName
 }
 
 function GetDmi()
@@ -640,7 +649,7 @@ function GetDmi()
     # Checks for SMBIOS compliance and values for. Called once by GetMachineInfo().
     # Dynamically checks the dmi_var's and removes them from the array if not present
     #     to adjust for SMBIOS Standard Version variations.
-    smbios_compliant="/sys/class/dmi/id/"
+    smbios_compliant="/sys/class/dmi/id/" # local var
 
     dmi_vars='bios_vendor
 		bios_version
@@ -649,7 +658,7 @@ function GetDmi()
 		board_name
 		board_version
 		board_serial
-		board_asset_tag'
+		board_asset_tag' # local var
 
     echo -e "------------------ SMBIOS Information from '/sys/class/dmi/id/' "
     debug "SMBIOS Information" 1
@@ -658,7 +667,7 @@ function GetDmi()
     then
         # Loop through once to verify all the vdi_var files exist first. If not, 
         #    then modify list by removing the file name from the declared array.
-        dmi_idx=0
+        dmi_idx=0 # local var for counter
         for dmi_var in ${dmi_vars}
         do
             if [ ! -f $smbios_compliant$dmi_var ]
@@ -672,23 +681,21 @@ function GetDmi()
         # Then spin through the modified array to list them
         for dmi_var in ${dmi_vars}
         do
-            content=$(sudo head -n 1 $smbios_compliant$dmi_var)
-            title=$(echo $dmi_var | sed -e 's/_/ /g' | sed -e 's/\b\(.\)/\u\1/g' ) 
-            
-            # Check for Non-ASCII characters in content and remove them.
-            FixNonAsciiVar $dmi_var $content
-            
+            dmi_content=$(sudo head -n 1 $smbios_compliant$dmi_var | \
+                sed 's/[\d0-\d8,\d11-\d31,\d127-\d255]//g' )
+            dmi_title=$(echo $dmi_var | sed -e 's/_/ /g' | sed -e 's/\b\(.\)/\u\1/g' ) 
+                        
             if [ $dmi_var == "board_version" ]
             then               
-                if [[ "$content" == "1234567890" ]]
+                if [[ "$dmi_content" == "1234567890" ]]
                 then
-                    content=""
+                    dmi_content=""
                 fi
-            elif [[ "$content" == *"default "* ]]
+            elif [[ "$dmi_content" == *"default "* ]]
             then
-                content="Value Not Set"
+                dmi_content="Value Not Set"
             fi
-            printf "%-20s %s\n" "$title:" "$content";
+            printf "%-20s %s\n" "$dmi_title:" "$dmi_content";
         done
     else
         echo -e "No SMBIOS information found"
@@ -697,6 +704,7 @@ function GetDmi()
     printf "%-20s %s\n" "Current boot mode:" "$boot_mode"
     GetSb
     nl
+    unset -v dmi_idx dmi_var dmi_vars dmi_content dmi_title
 }
 
 function GetSb()
@@ -759,6 +767,7 @@ function GetSb()
         fi
         nl
     fi
+    unset -v error_mokutil mokutil_cmd sb_state sb_disabled
 }
 
 function GetMem()
@@ -768,6 +777,7 @@ function GetMem()
     mem_stats=$(free -m)
     echo -e "$mem_stats"
     nl
+    unset -v mem_stats
 }
 
 function GetUsb()
@@ -777,6 +787,7 @@ function GetUsb()
     usb_info=$(lsusb -t -v)
     echo -e "$usb_info"
     nl
+    unset -v usb_info
 }
 
 function GetNetworkingInfo()
@@ -799,7 +810,7 @@ function GetInternetStatus()
 {
     # Verifies ping status and relsolv. Called once by GetNetworkingInfo().
     ping -c 1 www.google.com &> /dev/null
-    pingStatus=$?
+    pingStatus=$? # Global var
     echo -e "  --- Internet Connection Status from 'ping [various addresses]' --- "
     if [ $pingStatus == 0 ]
     then 
@@ -822,12 +833,12 @@ function GetPingStatus()
 {
     # Takes arg as IP or URL. Returns pseudo boolean $return_status. Called twice (by Paster() and GetInternetStatus()).
     ping -c 1 $1 &> /dev/null
-    pingStatus=$?
+    pingStatus=$? # Global Var
     if [ $pingStatus == 0 ]
     then 
-        return_status="true"
+        return_status="true" # Global Var
     else 
-        return_status="false"
+        return_status="false" # Global Var
     fi    
     debug "GetPingStatus(): Value: $return_status" 1
 }
@@ -840,22 +851,26 @@ function GetIP()
     # Grab IP address information
     if [ "$less_status" == "less" ]
     then
-        ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.')
+        ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.') # Local Var
         echo -e "$ip_addr"
     else
         ip_addr=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:' -e 'inet.' \
             | sed '/inet\s/ s/inet\s.*/inet [REMOVED]/g' \
-            | sed '/inet6\s.*/ s/inet6\s.*/inet6 [REMOVED]/g')
+            | sed '/inet6\s.*/ s/inet6\s.*/inet6 [REMOVED]/g') # Local Var
         echo -e "$ip_addr"
     fi
+    unset -v ip_addr
     nl
 }
 
 function CheckIpUp()
 {
     # Check to see if an exposed network device is up before going out to LAN. Called twice by GetNetworkingInfo()
-    show_silent=$1        # show or silent. Eval is on: "show"
-    ip_devices_up=$(/sbin/ip addr | grep -e '^[[:space:][1-9]:.*UP,LOWER_UP' | sed 's/.*virb.*:.*\|.*lo:.*LOOPBACK.*//g' | sed -e /^$/d)
+    show_silent=$1        # show or silent. Eval is on: "show" # Global Var
+    ip_devices_up=$(/sbin/ip addr | \
+        grep -e '^[[:space:][1-9]:.*UP,LOWER_UP' | \
+        sed 's/.*virb.*:.*\|.*lo:.*LOOPBACK.*//g' | \
+        sed -e /^$/d) # Local Var
     if [ "$show_silent" == "show" ]
     then
         echo -e "  --- Network Device Status Summary from 'ip addr' ---  "
@@ -882,20 +897,45 @@ function CheckIpUp()
         debug "'show_silent' call out of range $show_silent" 1
     fi
     debug "show_silent: $show_silent 'up_status': $up_status" 1
+    unset -v ip_devices_up
 }
 
-function GetFQDN()
+function GetHostname()
 {
     # Gets Hostname information. Called once by GetMachineInfo().
-    echo -e "  --- Hostname from 'hostname --fqdn' ---  "
+    #     Values for $check_hostname:
+    #         0 = Use 'hostname'
+    #         1 = Use 'hostnamectl'
+    #         2 = 'hostname' and 'hostnamectl' were not found.
+    #                 Print alternate message.
+    if [ $check_hostname -eq 0 ]
+    then
+        hostname_long=$(hostname --fqdn)  # Local Var
+        hostname_short=$(hostname | \
+            sed 's/\..*//g')  # Local Var
+        hostname_title="'hostname --fqdn'"  # Local Var
+    elif [ $check_hostname -eq 1 ]
+    then
+        hostname_long=$(hostnamectl --static )
+        hostname_short=$(hostnamectl --static | \
+            sed 's/\..*//g')
+        hostname_title="'hostnamectl --static'"
+    else
+        hostname_long="<Could not be determined>"
+        hostname_short="<Could not be determined>"
+        hostname_title="'hostname'"
+    fi
+    
+    echo -e "  --- Hostname from $hostname_title ---  "
     if [ "$less_status" == "less" ]
     then
-        host_name=$(hostname --fqdn)
+        host_name=$hostname_long
     else
-        host_name=$(hostname | sed 's/\..*//g')
+        host_name=$hostname_short
     fi
     echo -e "The 'Hostname' of the computer system is: $host_name"
     nl
+    unset -v hostname_long hostname_short hostname_title host_name
 }
 
 function GetDiskInfo()
@@ -925,7 +965,7 @@ function GetDiskInfo()
 
 GetMountInfo()
 {
-    mount_info=$(mount | grep '^/dev' | sort)
+    mount_info=$(mount | grep '^/dev' | sort) # local var
     
     if [ "$mount_info" == "" ]
     then
@@ -934,12 +974,17 @@ GetMountInfo()
     echo -e "${setansi}---------- Current Mount Details of 'mount':$ransi"
     echo -e "$mount_info"
     nl
+    unset -v mount_info
 }
 
 function GetZfsInfo()
 {
-    zfs_part_type=$(sudo fdisk -l 2>&1 | sed '/\/dev\/loop/,+3 d' 2> /dev/null | uniq | grep -m 1 'Solaris root|Solaris boot' )
-    zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | grep -v '/snap/' | grep -m 1 'rpool')
+    zfs_part_type=$(sudo fdisk -l 2>&1 | \
+        sed '/\/dev\/loop/,+3 d' 2> /dev/null | \
+        uniq | grep -m 1 'Solaris root|Solaris boot' ) # Local Var
+    zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | \
+        grep -v '/snap/' | \
+        grep -m 1 'rpool') # Local Var
     
     if [[ "$zfs_part_type" != "" ]]
     then
@@ -956,17 +1001,20 @@ function GetZfsInfo()
         fi
         nl
     fi
+    unset -v zfs_part_type zfs_fs_type
 }
 
 function GetLuksInfo()
 {
-    luks_fs_type=$(lsblk -o NAME,FSTYPE | grep -m 1 'crypto_LUKS' )
+    luks_fs_type=$(lsblk -o NAME,FSTYPE | \
+        grep -m 1 'crypto_LUKS' )
     if [[ "$luks_fs_type" != "" ]]
     then
         echo -e "${setansi}----------  LUKS Information:$ransi"
         echo -e "System has a LUKS encrypted filesystem."
         nl
     fi
+    unset -v luks_fs_type
 }
 
 
@@ -974,12 +1022,13 @@ function GetStorageControllers() {
     # Based on this information: 
     #     lspci | grep --color=never -i -e 'IDE controller' -e 'SATA controller' -e 'SCSI controller' -e 'Non-Volatile memory controller' -e 'RAID Controller'
     echo -e "${setansi}---------- Storage Controller Information From 'lspci':$ransi"
-    cntrllr_busid_list=$(sudo -i lspci | grep --color=never -i -e 'IDE ' \
-        -e 'SATA ' \
-        -e 'SCSI ' \
-        -e 'Non-Volatile memory ' \
-        -e 'RAID ' | \
-        awk '{print $1}')
+    cntrllr_busid_list=$(sudo -i lspci | \
+        grep --color=never -i -e 'IDE ' \
+            -e 'SATA ' \
+            -e 'SCSI ' \
+            -e 'Non-Volatile memory ' \
+            -e 'RAID ' | \
+        awk '{print $1}') # Local Var
     # Modified for devices which have no formal storage controllers besides USB or SD
     if [ ! -z "$cntrllr_busid_list" ]
     then
@@ -994,6 +1043,7 @@ function GetStorageControllers() {
         echo -e "May be USB or SD storage."
         nl
     fi
+    unset -v controller cntrllr_busid_list
 }
 
 function GetGraphicsEnv() 
@@ -1023,7 +1073,8 @@ function GetGraphicsEnv()
         # Use alternate method to display GPU info
         echo -e "${setansi}---------- Video Details from 'lspci':$ransi"
         #lspci | grep -i vga | sed 's/[0-9][0-9]:[0-9][0-9]\.[0-9] //g'
-        gpu_list=$(sudo -i lspci | grep --color=never -i -e 'VGA' | \
+        gpu_list=$(sudo -i lspci | \
+            grep --color=never -i -e 'VGA' | \
             awk '{print $1}')
         # Modified for devices which have no formal GPU's
         if [ ! -z "$gpu_list" ]
@@ -1038,6 +1089,7 @@ function GetGraphicsEnv()
             echo -e "No formal GPU found. Check in other places for a framebuffer."
             nl
         fi
+        unset -v gpu_list
     fi
     echo -e "   --- Graphics Environment Continued from 'various graphics ENVs' ----" 
     if [ "$XDG_CURRENT_DESKTOP" != "" ] 
@@ -1049,17 +1101,23 @@ function GetGraphicsEnv()
     if [ "$DESKTOP_SESSION" != "" ]
     then
         echo -e "The Current Desktop Session is: $DESKTOP_SESSION "
-        xmode=$(xrandr -q 2> /dev/null | egrep --color=never -e 'Screen' -e 'connected ')
+        xmode=$(xrandr -q 2> /dev/null | \
+            egrep --color=never -e 'Screen' -e 'connected ')
         echo -e "The Current X Desktop Information Details from 'xrandr' are: "
         echo -e "$xmode" 
     else
         echo -e "The Current Desktop Session is: <Not Populated> " 
     fi
+    unset -v xmode
+    
     if [ "$XDG_SESSION_TYPE" != "" ]
     then
         echo -e "The Current Session Type is: $XDG_SESSION_TYPE " 
     else
-        session_type=$(ps -e | egrep -e 'tty' | egrep -e 'x11|Xorg|wayland' | awk '{print $4}')
+        session_type=$(ps -e | \
+            egrep -e 'tty' | \
+            egrep -e 'x11|Xorg|wayland' | \
+            awk '{print $4}')
         if [ "$session_type" != "" ]
         then
             echo -e "The Current Session Type is: $session_type " 
@@ -1067,18 +1125,25 @@ function GetGraphicsEnv()
             echo -e "The Current Session Type is: <No Graphics Session Type Loaded> " 
         fi
     fi
+    unset -v session_type
+    
     if [ -f /etc/X11/default-display-manager ]
     then
-        display_manager=$(egrep /usr/sbin/ /etc/X11/default-display-manager | sed 's/\/usr\/sbin\///g')
+        display_manager=$(egrep /usr/sbin/ /etc/X11/default-display-manager | \
+            sed 's/\/usr\/sbin\///g')
         echo "The Current Display Manager is: $display_manager" 
     else
         echo "The Current Display Manager is: <Not Configured>" 
     fi
+    unset -v display_manager
+    
     # This change is to adapt to Server Edition, which for some reason, can have a gsettings setting.
-    get_console_desktop=$([ -d /usr/share/xsessions/ ] && echo "Desktop" || echo "Console")
+    get_console_desktop=$([ -d /usr/share/xsessions/ ] && \
+        echo "Desktop" || \
+        echo "Console") # Local Var
     if [ "$get_console_desktop" == "Desktop" ]
     then
-        desktop_theme=$(gsettings get org.gnome.desktop.interface gtk-theme)
+        desktop_theme=$(gsettings get org.gnome.desktop.interface gtk-theme) # Local Var
         if [ "$desktop_theme" != "" ]
         then
             echo -e "The Current Desktop Theme: $desktop_theme" 
@@ -1086,12 +1151,16 @@ function GetGraphicsEnv()
             echo -e "The Current Desktop Theme: <None Configured>" 
         fi 
     else
-        echo -e "The Current Desktop Theme: Is not set,this is Console Based." 
-    fi   
-    virt_ttys=$(ps -e | awk '$2 ~ /^tty/ || $2 ~ /^ttyS/ || $2 ~ /^pts/ {print "\t" $2 "\t" $4}')
+        echo -e "The Current Desktop Theme: Is not set, this is Console Based." 
+    fi
+    unset -v get_console_desktop desktop_theme
+    
+    virt_ttys=$(ps -e | \
+        awk '$2 ~ /^tty/ || $2 ~ /^ttyS/ || $2 ~ /^pts/ {print "\t" $2 "\t" $4}') # Local Var
     echo -e "The Current Virtual TTY's being used are:" 
     echo -e "\tTTY#\tUsed By" 
     echo -e "$virt_ttys" 
+    unset -v virt_ttys
     nl
 }
 
@@ -1100,14 +1169,14 @@ function GetSoundDevices() {
     echo -e "${setansi}---------- Sound Device Information From 'lspci':$ransi"
     sound_device_list=$(sudo -i lspci | \
         grep --color=never -i -e 'audio ' | \
-        awk '{print $1}')
+        awk '{print $1}') # Local Var
     # Make sure not NULL
     if [ ! -z "$sound_device_list" ]
     then
         # Parse through list (array) and show detailed information on each
         for sound_device in ${sound_device_list}
         do
-            sudo -i lspci -s $sound_device -vv
+            sudo -i lspci -s $sound_device -v
             nl
         done
     else
@@ -1115,6 +1184,7 @@ function GetSoundDevices() {
         nl
     fi
     echo -e "For more detailed audio information, get and run the script at: http://www.alsa-project.org/alsa-info.sh "
+    unset -v sound_device sound_device_list
 }
 
 function GetRepositories()
@@ -1126,19 +1196,20 @@ function GetRepositories()
     then    
         echo -e "${setansi}---------- Repository Information from '/etc/apt/sources.list and etc/apt/sources.list.d/':$ransi"
         nl
-        sources=$(grep -v '#' /etc/apt/sources.list | sed -e /^$/d )
+        sources=$(grep -v '#' /etc/apt/sources.list | sed -e /^$/d ) # Local Var
         # sourcesd=$(grep -v '#' /etc/apt/sources.list.d/* | sed -e /^$/d)
         echo -e "Sources List:"
         echo -e "$sources"
         nl
-        file_path="/etc/apt/sources.list.d/"
+        sourcesd_file_path="/etc/apt/sources.list.d/" # Local Var
         if [ $(find $file_path -type f 2> /dev/null | wc -l) -ne 0 ] 
         then  
             echo -e "Sources List from SourcesD:"
-            sourcesd_files=$(find $file_path -type f 2> /dev/null )
+            sourcesd_files=$(find $sourcesd_file_path -type f 2> /dev/null ) # Local Var
             for list_file in $sourcesd_files
             do
-                lines=$(grep -v '#' $list_file | sed -e /^$/d )
+                lines=$(grep -v '#' $list_file | \
+                    sed -e /^$/d ) 
                 #line_count=$( wc -l <<< "$lines" )
                 if [ "$lines" != "" ]
                 then
@@ -1157,6 +1228,7 @@ function GetRepositories()
         echo -e "This system is not derived from a Debian Branch"
         nl
     fi
+    unset -v sources sourcesd_file_path sourcesd_files list_file lines
 }
 
 function GetOtherDetails()
@@ -1173,13 +1245,7 @@ function GetOtherDetails()
     GetUserInstalled
     GetSnapInstalled
     GetFlatpakInstalled
-    echo -e "Currently logged in User(s):"
-    who -H
-    nl
-    echo -en "The User running this script was: "
-    id -un
-    id |tr ' ' '\n'|sed 's/,/, /g'| fold -sw 80 |sed 's/ //g'
-    nl
+    GetUser
     GetLive
     GetLocal
     GetCmdLine
@@ -1191,7 +1257,9 @@ function GetOriginalInstallDate()
     # Makes best logical efforts.
     if [ $(sudo find /var/log/installer/ -type f 2> /dev/null | wc -l) -ne 0  ]
     then
-        installer_date=$(sudo find /var/log/installer/ -type f -printf "%T+\n" 2> /dev/null | sort| head -1 2> /dev/null )
+        installer_date=$(sudo find /var/log/installer/ -type f -printf "%T+\n" 2> /dev/null | \
+            sort| \
+            head -1 2> /dev/null ) # Local Var
         installer_date="Original Installation Date:         ${setansi} ${installer_date%.*} $ransi"
     else
         debug "Installer date: $(sudo find / -maxdepth 1 -type d -printf "%T+ %p\n" > /dev/null | sort| head -1 )" 1 
@@ -1213,6 +1281,7 @@ function GetOriginalInstallDate()
         installer_date="Estimated Installation Date:        ${setansi} ${installer_date%.*} $ransi"
     fi
     echo -e "$installer_date"
+    unset -v installer_date
 }
 
 function GetInstallMedia()
@@ -1226,7 +1295,8 @@ function GetInstallMedia()
         # but the files within that directory have been removed before release for distribution.
         if [ -f /var/log/installer/media-info ]
         then
-            installer_media=$(sudo head -n 1 /var/log/installer/media-info | awk '{print "Original Installation Media: "$0}' )
+            installer_media=$(sudo head -n 1 /var/log/installer/media-info | \
+                awk '{print "Original Installation Media: "$0}' ) # Local Var
             echo -e "$installer_media"
         else
             echo -e "The Installer log directory exists, but the Installer log files have been removed."
@@ -1236,6 +1306,7 @@ function GetInstallMedia()
         echo -e "Original Installation Media: Cannot determine which ISO this was installed from. "
         echo -e "The Installer Log Directory does not exist. This system may have been from a Live Image Environment (LIE)."
     fi
+    unset -v installer_media
 }
 
 function GetDistUpgradeDate()
@@ -1244,11 +1315,13 @@ function GetDistUpgradeDate()
     # Displays if it ever had a do-release-upgrade process done
     if [ -f /var/log/dist-upgrade/apt.log ]
     then
-        drg_date=$(sudo egrep -m 1 'Log Time' /var/log/dist-upgrade/apt.log | awk '{"Do-Release-Upgrade Date: "$3 }' )
+        drg_date=$(sudo egrep -m 1 'Log Time' /var/log/dist-upgrade/apt.log | \
+            awk '{"Do-Release-Upgrade Date: "$3 }' ) # Local Var
         echo -e "$drg_date"
     else
         echo -e "Do-Release-Upgrade Date: This system may have not had a 'Release Upgrade' through 'do-release-upgrade'"
     fi
+    unset -v drg_date
 }
 
 function GetHweInfo()
@@ -1283,7 +1356,8 @@ function GetHweInfo()
 
 function GetHweRange() {
     # Valid current choices for Release numbers LTS are: 14.04 through current DEV versions...
-    LSB_Rel=$(lsb_release -sr | cut -c 1-5)
+    LSB_Rel=$(lsb_release -sr | \
+        cut -c 1-5) # Local Var
     case "$LSB_Rel" in
         ("14.04")
             LTS_PKG="14.04"
@@ -1342,7 +1416,9 @@ function GetHweRange() {
         (*)
             echo -e "Something went wrong. LTS Edition out of HWE support range."
     esac    
+    # LTS_PKG is Global Var
     debug "HWE LTS_PKG: $LTS_PKG" 1
+    unset -v LSB_Rel
 }
 
 function GetHweKernels()
@@ -1351,16 +1427,17 @@ function GetHweKernels()
 
     show_kernels=$(apt-cache show linux-generic-hwe-$LTS_PKG 2> /dev/null \
         | awk '/Depends:/ {print "For HWE Package: " $2 ", Kernel Version: " $4}' \
-        | sed -e 's/..$//' -e 's/~.*//') 2> /dev/null 
+        | sed -e 's/..$//' -e 's/~.*//') 2> /dev/null # Local Var
     echo -e "   --- HWE Kernel Reference from 'apt-cache show':"
     echo -e "$show_kernels"
     nl
+    unset -v show_kernels
 }
 
 function CheckHwe()
 {
     return_status=$(dpkg -s linux-generic-hwe-$LTS_PKG 2>&1 \
-        | grep 'Status\|dpkg-query' )
+        | grep 'Status\|dpkg-query' ) # Local Var
     echo -e "   --- HWE Package Status from 'dpkg':"
         if [[ "$return_status" == *"Status:"* ]]
         then 
@@ -1371,11 +1448,12 @@ function CheckHwe()
             echo -e "kernel version to verify range"
         fi
         nl
+        unset -v return_status
 }
 
 function CheckIfCertifiedHardwarePlatform()
 {
-    platform_check=$(ubuntu-drivers list-oem 2> /dev/null )
+    platform_check=$(ubuntu-drivers list-oem 2> /dev/null ) # Local Var
     echo -e "   --- Certified Hardware Platform Status: (By the Ubuntu Wiki Standards)"
     if [ -z $platform_check ]
     then
@@ -1387,6 +1465,7 @@ function CheckIfCertifiedHardwarePlatform()
         echo -e "installed on this platform. "
     fi
     nl
+    unset -v platform_check
 }
 
 function GetUserInstalled()
@@ -1430,19 +1509,22 @@ function GetUserInstalled()
         echo -e "The method written in this script is for Debian Branch conventions."
         nl
     fi
+    unset -v manually_installed default_installed user_installed
 }
 
 function GetSnapInstalled()
 {
     ## Get a list of Installed Snap Packages
     echo -e "   --- Installed Snap Package List:"
-    snap_list=""
+    snap_list=""  # Local Var
     snap_list=$(snap list 2>&1)
-    snap_exit=$?
+    snap_exit=$?  # Local Var
     if [[ "$snap_exit" == "0" ]]
     then       
-        snap_list=$(snap list | awk '{print $1}' | grep -v 'Name')
-        snap_count=0
+        snap_list=$(snap list | \
+            awk '{print $1}' | \
+            grep -v 'Name')
+        snap_count=0  # Local Var
         
         if [ "$snap_list" == "" ] 
         then
@@ -1458,6 +1540,7 @@ function GetSnapInstalled()
     else
         echo -e "Snap is not installed"
     fi
+    unset -v snap_list snap_exit snap_count snap_package
     nl
 }
 
@@ -1465,12 +1548,14 @@ function GetFlatpakInstalled()
 {
     ## Get a list of Installed Flatpak Packages
     echo -e "   --- Installed Flatpak Package List:"
-    flatpak_list=""
+    flatpak_list=""  # Local Var
     flatpak_list=$(flatpak list 2>&1)
-    flatpak_exit=$?
+    flatpak_exit=$?  # Local Var
     if [[ "$flatpak_exit" == "0" ]]
     then       
-        flatpak_list=$(flatpak list | awk '{print $1}' | grep -v 'Name')
+        flatpak_list=$(flatpak list | \
+            awk '{print $1}' | \
+            grep -v 'Name')  # Local Var
         debug "Flatpak list count:${#flatpak_list[@]}" 1
         
         if [ "$flatpak_list" == "" ] 
@@ -1485,18 +1570,19 @@ function GetFlatpakInstalled()
     else
         echo -e "Flatpak is not installed"
     fi
+    unset -v flatpak_list flatpak_exit flatpak_package
     nl
 }
 
 function GetLive 
 {
     debug "GetLive: (Debug)" 1
-    live=false
+    live=false  # Local Var
     live_test1=$(mount | \
         grep ' / ' | \
         grep -o -e squashfs \
             -e tmpfs \
-            -e aufs )
+            -e aufs )  # Local Var
     live_test2=$(df | \
         grep ' /$'| \
         grep -o -e overlay \
@@ -1504,7 +1590,7 @@ function GetLive
             -e aufs \
             -e rootfs \
             -e /dev/mapper/live-rw \
-            -e union )
+            -e union )  # Local Var
 
     if [ "$live_test1" != "" ]
     then
@@ -1516,12 +1602,13 @@ function GetLive
 
     if $live
     then
-        live_installed="a Live Image Environment (LIE)."
+        live_installed="a Live Image Environment (LIE)."  # Local Var
     else
         live_installed="an installed system"
     fi
     echo -e "The 'system-info' script was booted from $live_installed"
     debug "Live Installed: $live_installed" 1
+    unset -v live live_test1 live_test2
     nl
 }
 
@@ -1529,10 +1616,10 @@ function GetLocal
 {
     debug "GetLocal: (Debug)" 1
     
-    tmpstr="locally."
+    local_status="locally."  # Local Var
     # Get pts session of where the script was run       
     pts=$(echo $(ps -C "${0##*/}") | \
-        awk '{print $6}')
+        awk '{print $6}')  # Local Var
 
     if [ "$pts" != "" ] 
     then
@@ -1543,24 +1630,39 @@ function GetLocal
            grep "sshd" | \
            awk '{print$9}' | \
            sed 's/.*@//g' \
-           2> /dev/null)
+           2> /dev/null)  # Local Var
         ssh_user=$(ps -ef | \
            grep "$USER@$pts" | \
            grep "sshd" | \
            awk '{print$9}' | \
            sed 's/@,*//g' \
-           2> /dev/null)
+           2> /dev/null)  # Local Var
         # Compare the pts sessions
         if [ "$pts" == "$ssh_test" ]
         then
-            tmpstr="via ssh."
+            local_status="via ssh."
         fi
     fi
     debug "PTS: $pts" 1
     debug "ssh_test: $ssh_test" 1
     debug "ssh_user: $ssh_user" 1
     debug "Current User: $USER" 1
-    echo "The 'sysetm-info' script seems to be running $tmpstr "
+    echo "The 'sysetm-info' script seems to be running $local_status "
+    unset -v local_status pts ssh_test ssh_user
+    nl
+}
+
+function GetUser() {
+    echo -e "Currently logged in User(s):"
+    who -H
+    nl
+    echo -en "The User running this script was: "
+    id -un
+    id | \
+        tr ' ' '\n'| \
+        sed 's/,/, /g'| \
+        fold -sw 80 | \
+        sed 's/ //g'
     nl
 }
 
@@ -1576,9 +1678,9 @@ function AdjustForLessStatus()
     # Sets Env Vars for less viewer or not (written report). Called once by Writer()
     if [ "$less_status" == "less" ]
     then
-        setansi="$blueback"
-        ransi="$resetvid"
-        lshw_cmd='sudo lshw'
+        setansi="$blueback"  # Global Var
+        ransi="$resetvid"  # Global Var
+        lshw_cmd='sudo lshw'  # Global Var
         MessageView
         MessageLess
     else
@@ -1666,11 +1768,12 @@ function Pause()
 function ArchiveReport() {
     #Check if uploaded (successfully)...
     # $check-paste is 1 at start (not uploaed), 0 if upload was successful.
-    uploaded=$check_paste
+    uploaded=$check_paste  # Local Var
     if [ $uploaded -eq 1 ] 
     then
         # Check size of report file, must be less than 19.5kB
-        report_size=$(wc -c $report | awk '{print $1}')
+        report_size=$(wc -c $report | \
+            awk '{print $1}')  # Local Var
         if [ $report_size -ge 19500 ]
         then 
             echo -e "'${sname}.txt' is larger than 19.5kB. ($report_size bytes)"
@@ -1679,7 +1782,7 @@ function ArchiveReport() {
             echo -e "you will need to compress the report."
             nl
             # Prompt User       
-            ans=
+            ans=""
             while [ "$ans" != "y" ] && [ "$ans" != "Y" ] && [ "$ans" != "n" ] && [ "$ans" != "N" ]
             do
                 read -erp "Would you like to archive the report? <y/N> " ans 
@@ -1720,6 +1823,7 @@ function ArchiveReport() {
                        Sleep 1
                     fi
                 fi
+                $ans=""
             done
         else
             echo "Report 'size' check complete. ($report_size bytes)"
@@ -1843,7 +1947,8 @@ function DoPaste()
             ;;
         *)
             echo -e "Something went wrong. Error out of range."
-            exit 1
+            exit_code=105
+            exit $exit_code
     esac    
 }
 
@@ -1867,7 +1972,7 @@ function ProgressActive()
 function Paster() 
  {
      # Provides an upload of report with a progress bar. Called once by Main().
-     target="a pastebin (URL depends on the method used)."
+     target="a pastebin (URL depends on the method used)." # Var could be unset at end of this function...
      linklog="$HOME/${sname}-link.log"
 
      echo -e "$blueback Sensitive data is [REMOVED] from the report file $resetvid"
@@ -1885,7 +1990,7 @@ function Paster()
                  echo -e "This may take 1-2 minutes..."
                  nl
                  tput civis
-                 keep_spinning=$(mktemp)
+                 keep_spinning=$(mktemp /tmp/keep_spinning-XXXXX)
                  ProgressActive "$keep_spinning" & pid_progressactive=$!
                  DoPaste $paste_prog
                  if [ $check_paste -eq 0 ]
@@ -1948,6 +2053,19 @@ function Paster()
         nl
         exit_code=104
     fi
+    unset -v target linklog keep_spinning
+}
+
+function ReportCleaner()
+{
+    # Clean the report from non-ascii characters. Called once by Main.
+	report_cleaned=$(mktemp /tmp/report_cleaned-XXXXX)
+	mv "$report" "$tmprapp"
+	tr -cd '\11\12\40-\176' < "$report_cleaned" > "$report"
+	sleep 1
+	# For debug purposes, comment out this next line
+	rm "$report_cleaned"
+	unset -v report_cleaned
 }
 
 # The following Basic Logger was based on public domain code 
@@ -1985,6 +2103,7 @@ debug()
 
 logger() 
 {
+    logfile=$HOME/$sname.log
     case "$3" in
         1)
             exec 3>&2     # logging stream (file descriptor 3) defaults to STDERR
@@ -2004,7 +2123,9 @@ logger()
     
     if [ $verbosity -ge $1 ]; then
         # Expand escaped characters, wrap at 70 chars, indent wrapped lines
-        echo -e "$startt $2" | fold -w70 -s | sed '2~1s/^/  /' >&3
+        echo -e "$startt $2" | \
+            fold -w70 -s | \
+            sed '2~1s/^/  /' >&3
     fi
 }
 
@@ -2020,13 +2141,18 @@ CheckTypeError
 CheckPrerequisites
 ## Report
 UserInput
-Writer less | less -R    # writing to less
+Writer less | \
+    less -R    # writing to less
 ## Post processing
 RmOldReport
 #RestorePath ## This needed if we ever get CheckPath() working
-Writer | sed 's/<filter>/[REMOVED]/g' > "$report"     # Writing to file
+Writer | \
+    sed 's/<filter>/[REMOVED]/g' > \
+    "$report"     # Writing to file
 ## Epitaph
 echo "The result is stored in '$report'"
+# Remove any Non-ASCII characters before Paster()
+ReportCleaner
 ## Optional upload to various PasteBins
 Paster
 ## Optional - Archive Report if size larger than 19.5k
