@@ -1035,7 +1035,7 @@ function GetStorageControllers() {
         # Parse through list (array) and show detailed information on each
         for controller in ${cntrllr_busid_list}
         do
-            sudo -i lspci -s $controller -vv
+            sudo -i lspci -s $controller -v
             nl
         done
     else
