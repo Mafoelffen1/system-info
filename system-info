@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc3, Script Date: 2022.07.26"
+version="Version: 02.00-00-rc3, Script Date: 2022.07.27"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1082,7 +1082,7 @@ function GetGraphicsEnv()
             # Parse through list )array) and show detailed information on each
             for gpu in ${gpu_list}
             do
-                sudo -i lspci -s $gpu -vv
+                sudo -i lspci -s $gpu -v
                 nl
             done
         else
