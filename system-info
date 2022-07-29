@@ -1648,19 +1648,19 @@ function LocalOrSsh()
     script_progname="${0##*/}"
     message_tmpstr="locally"
     los_pts=$(ps -e|grep -e "${0##*/}" | grep -om1 'pts/[0-9]*')
-    debug "pts=$los_pts" 1
-    debug "$(ps -e | grep -e "$script_progname)" 1
+    #debug "pts=$los_pts" 1
+    #debug "$(ps -e | grep -e "$script_progname )" 1
     pidsi=$(ps -e | \
         grep -m1 -e "$script_progname" | \
         sed -e 's/^ *//' \
             -e 's/ .*//' )
     treestr=$(pstree -A -p -s $pidsi)
-    debug "$(echo "$treestr)" 1
-    debug "$(echo "$treestr" | sed -e "s/.*sshd/sshd/" -e "s/${script_progname}($pidsi).*/${script_progname}($pidsi)/" )" 1
+    # debug "$treestr" 1
+    # echo $treestr | sed -e "s/.*sshd/sshd/" -e "s/${script_progname}($pidsi).*/${script_progname}($pidsi)/
 
     if [ "$los_pts" != "" ]
     then
-        debug "$(echo "$treestr" | grep 'sshd')"1
+        #echo "$treestr" | grep 'sshd'
         if echo "$treestr" | grep 'sshd' > /dev/null
         then
             message_tmpstr="via ssh"
