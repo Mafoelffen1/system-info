@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc3, Script Date: 2022.07.27"
+version="Version: 02.00-00-rc3, Script Date: 2022.07.29"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -65,6 +65,9 @@ check_paster=0
 # Variable to track upload status as uploaded
 check_paste=1
 missing_paster_progs=""
+# Variable to add more detail to Report
+detail_level='-v'
+zfs_detail=1
 # Logger settings
 #     Change verbosity to show level of warnings. Range: -1 through 5. -1 is show nothing.
 verbosity=-1
@@ -146,6 +149,9 @@ function CheckArgs()
         echo -e "    -s # or --show  #  Changes Verbosity levels of the logger."
         echo -e "        # range 0 through 5"
         echo -e "        Example: system-info -s 5  turns on debugging messages"
+        echo -e "    -d or --details Displays more details to Report"
+        echo -e "        Adds more details to GPU,Storage Controller, Sound devices, "
+        echo -e "            and ZFS (if installed)."
         nl
         echo -e "Parts of the script need elevated permissions (sudo) to get the correct " 
         echo -e "information from your system, while other parts do not. We have "
@@ -175,6 +181,10 @@ function CheckArgs()
             exit_code=1
             exit $exit_code;
         fi
+    elif [[ "$arg1" == "-d" ]] || [[ "$arg1" == "--details" ]]
+    then 
+        detail_level='-vv'
+        zfs_detail=0
     fi
 }
 
@@ -784,7 +794,7 @@ function GetUsb()
 {
     # Gets USB information. Called once by Writer().
     echo -e "${setansi}---------- USB Information from 'lsusb -t -v':$ransi"
-    usb_info=$(lsusb -t -v)
+    usb_info=$(lsusb -t $detail_level)
     echo -e "$usb_info"
     nl
     unset -v usb_info
@@ -981,7 +991,7 @@ function GetZfsInfo()
 {
     zfs_part_type=$(sudo fdisk -l 2>&1 | \
         sed '/\/dev\/loop/,+3 d' 2> /dev/null | \
-        uniq | grep -m 1 'Solaris root|Solaris boot' ) # Local Var
+        uniq | grep -m 1 'Solaris root\|Solaris boot' ) # Local Var
     zfs_fs_type=$(df -hT -x tmpfs -x devtmpfs | \
         grep -v '/snap/' | \
         grep -m 1 'rpool') # Local Var
@@ -990,12 +1000,22 @@ function GetZfsInfo()
     then
         echo -e "${setansi}----------  ZFS Information:$ransi"
         echo -e "System has at least one ZFS type partition."
+        nl
         if [[ "$zfs_fs_type" != "" ]]
         then
             echo -e "System has ZFS rpools activated."
-            ## Uncomment the next two lines, if more information is needed
-            #zfs list
-            #zpool list
+            nl
+            if [ $zfs_detail -eq 0 ]
+            then
+                # Shown only if --details or -d option is used 
+                zfs list
+                nl
+                zpool list
+                nl
+            else 
+                echo -e "If you restart the script adding a '-d' startup option, it will show more details."
+                nl
+            fi
         else
             echo -e "System has no ZFS rpools activated."
         fi
@@ -1035,7 +1055,7 @@ function GetStorageControllers() {
         # Parse through list (array) and show detailed information on each
         for controller in ${cntrllr_busid_list}
         do
-            sudo -i lspci -s $controller -v
+            sudo -i lspci -s $controller $detail_level
             nl
         done
     else
@@ -1050,7 +1070,7 @@ function GetGraphicsEnv()
 {
     # Gets Graphics Layer Information. Called once by Writer().
     # Do not call $lshw_cmd if lshw is not installed...
-    if [[ "$check_lshw" == "0" ]]
+    if [[ "$check_lshw" == "0" ]] && [[ $detail_level == "-v" ]]
     then
     
         echo -e "${setansi}---------- Video Details from 'lshw':$ransi"
@@ -1082,7 +1102,7 @@ function GetGraphicsEnv()
             # Parse through list )array) and show detailed information on each
             for gpu in ${gpu_list}
             do
-                sudo -i lspci -s $gpu -v
+                sudo -i lspci -s $gpu $detail_level
                 nl
             done
         else
@@ -1176,7 +1196,7 @@ function GetSoundDevices() {
         # Parse through list (array) and show detailed information on each
         for sound_device in ${sound_device_list}
         do
-            sudo -i lspci -s $sound_device -v
+            sudo -i lspci -s $sound_device $detail_level
             nl
         done
     else
