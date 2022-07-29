@@ -1267,7 +1267,7 @@ function GetOtherDetails()
     GetFlatpakInstalled
     GetUser
     GetLive
-    GetLocal
+    GetWhere
     GetCmdLine
 }
 
@@ -1630,6 +1630,46 @@ function GetLive
     debug "Live Installed: $live_installed" 1
     unset -v live live_test1 live_test2
     nl
+}
+
+function GetWhere()
+{
+    if [ -e /usr/bin/pstree ]
+    then 
+        LocalOrSsh
+    else
+        GetLocal
+    fi
+}
+
+function LocalOrSsh()
+{
+    debug "LocalOrSsh:" 1
+    script_progname="${0##*/}"
+    message_tmpstr="locally"
+    los_pts=$(ps -e|grep -e "${0##*/}" | grep -om1 'pts/[0-9]*')
+    debug "pts=$los_pts" 1
+    debug "$(ps -e | grep -e "$script_progname)" 1
+    pidsi=$(ps -e | \
+        grep -m1 -e "$script_progname" | \
+        sed -e 's/^ *//' \
+            -e 's/ .*//' )
+    treestr=$(pstree -A -p -s $pidsi)
+    debug "$(echo "$treestr)" 1
+    debug "$(echo "$treestr" | sed -e "s/.*sshd/sshd/" -e "s/${script_progname}($pidsi).*/${script_progname}($pidsi)/" )" 1
+
+    if [ "$los_pts" != "" ]
+    then
+        debug "$(echo "$treestr" | grep 'sshd')"1
+        if echo "$treestr" | grep 'sshd' > /dev/null
+        then
+            message_tmpstr="via ssh"
+        fi
+    fi
+
+    echo "The 'system-info' script seems to be running $message_tmpstr"
+    nl
+    unset -v script_progname message_tmpstr los_pts pidsi treestr treestr_sshd_test
 }
 
 function GetLocal 
@@ -2084,7 +2124,7 @@ function Paster()
 function ReportCleaner()
 {
     # Clean the report from non-ascii characters. Called once by Main.
-	report_original=$(mktemp /tmp/report_cleaned-XXXXX)
+	report_original=$(mktemp /tmp/report_uncleaned-XXXXX)
 	mv "$report" "$report_original"
 	tr -cd '\11\12\40-\176' < "$report_original" > "$report"
 	sleep 1
