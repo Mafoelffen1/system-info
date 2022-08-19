@@ -1655,7 +1655,12 @@ function GetWhere()
 {
     if [ -e /usr/bin/pstree ]
     then 
-        LocalOrSsh
++    if pstree -A -p -l -s &> /dev/null
+     then 
+         LocalOrSsh
+     else
+         GetLocal
+     fi
     else
         GetLocal
     fi
