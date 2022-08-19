@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc4, Script Date: 2022.08.18"
+version="Version: 02.00-00-rc4, Script Date: 2022.08.19"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1902,7 +1902,7 @@ function ArchiveReport() {
                     if [ $verbosity -eq 5 ]
                     then 
                        debug "Continuing without creating archive file..." 1
-                       Sleep 1
+                       sleep 1
                     fi
                 fi
 
