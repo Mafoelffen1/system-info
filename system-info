@@ -115,7 +115,7 @@ function CheckRoot()
         echo -e "This script needs some parts of it to run with elevated permissions."
         nl
         ## Check if 'sudo' is installed...
-        if type sudo > dev/null 2> /dev/null
+        if type sudo > /dev/null 2> /dev/null
         then
            echo -e "Please enter your password for that to happen."
            sudo -k # revoke previously cached sudo password 
