@@ -1849,8 +1849,8 @@ function Pause()
 }
 
 function PassPhrase() {
-    read -erp "Press any key to continue" ans
-    ans=${ans,}
+    read -erp "Press any key to continue\n" ans
+    ans=$ans
     if [[ "$ans" == "I am Groot" ]]
     then
         sleep 0.2
