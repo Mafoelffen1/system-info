@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc4, Script Date: 2022.08.20"
+version="Version: 02.00-00-rc4, Script Date: 2022.08.23"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -108,9 +108,9 @@ function CheckRoot()
         echo -e "$redback Do not run this script with sudo or as root$resetvid"
         echo -e "If your Linux ditribution installs with only a Root User as a default, "
         echo -e "please create another User that has the ability to run elevated commands. "
-        Pause
-        exit_code=106
-        exit $exit_code
+        
+        #exit_code=106
+        #exit $exit_code
     else
         echo -e "This script needs some parts of it to run with elevated permissions."
         nl
@@ -126,7 +126,7 @@ function CheckRoot()
                 echo -e "$redback ----------- This script is made to use 'sudo' ----------- $resetvid"
                 echo -e "$redback ---- Password was incorrect for sudo elevated rights. --- $resetvid"
                 echo -e "Continuing to run the script, but: Expect errors. "
-                Pause
+                PassPhrase
                 echo -e "Running Script: ${sname} $version"
                 #exit_code=107
                 #exit $exit_code
@@ -1655,12 +1655,12 @@ function GetWhere()
 {
     if [ -e /usr/bin/pstree ]
     then 
-    if pstree -A -p -l -s &> /dev/null
-     then 
-         LocalOrSsh
-     else
-         GetLocal
-     fi
+        if pstree -A -p -l -s &> /dev/null
+        then 
+            LocalOrSsh
+        else
+            GetLocal
+        fi
     else
         GetLocal
     fi
@@ -1845,6 +1845,19 @@ function Pause()
 {
     read -n 1 -s -r -p "Press any key to continue"
     nl
+}
+
+function PassPhrase() {
+    read -erp "Press any key to continue" ans
+    ans=${ans,}
+    if [[ "$ans" == "I am Groot" ]]
+    then
+        sleep 0.2
+    else
+        echo -e "Exiting script"
+        exit_code=106
+        exit $exit_code
+    fi
 }
 
 function ArchiveReport() {
