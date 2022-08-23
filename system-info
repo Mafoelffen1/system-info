@@ -108,9 +108,10 @@ function CheckRoot()
         echo -e "$redback Do not run this script with sudo or as root$resetvid"
         echo -e "If your Linux ditribution installs with only a Root User as a default, "
         echo -e "please create another User that has the ability to run elevated commands. "
-        
+        PassPhrase
         #exit_code=106
         #exit $exit_code
+        echo -e "Running Script: ${sname} $version"
     else
         echo -e "This script needs some parts of it to run with elevated permissions."
         nl
@@ -125,8 +126,8 @@ function CheckRoot()
             else 
                 echo -e "$redback ----------- This script is made to use 'sudo' ----------- $resetvid"
                 echo -e "$redback ---- Password was incorrect for sudo elevated rights. --- $resetvid"
-                echo -e "Continuing to run the script, but: Expect errors. "
                 PassPhrase
+                echo -e "Continuing to run the script, but: Expect errors. "
                 echo -e "Running Script: ${sname} $version"
                 #exit_code=107
                 #exit $exit_code
