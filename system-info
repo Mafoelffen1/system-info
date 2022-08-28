@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-00-rc4, Script Date: 2022.08.23"
+version="Version: 02.00-00, Script Date: 2022.08.28"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -128,9 +128,6 @@ function CheckRoot()
                 echo -e "$redback ---- Password was incorrect for sudo elevated rights. --- $resetvid"
                 PassPhrase
                 echo -e "Continuing to run the script, but: Expect errors. "
-                echo -e "Running Script: ${sname} $version"
-                #exit_code=107
-                #exit $exit_code
             fi
         else
             echo -e "$redback ----------- This script is made to use 'sudo' ----------- $resetvid"
@@ -599,14 +596,20 @@ function UserInput()
 {
     # Gather User Information on the problem. Called once by Main()
     # User Input for Problem and Description
+    # Format input
     width=$(tput cols)
-    str=;for ((i=1;i<=$width;i++));do str="${str}_";done
-    echo -e "$str"
+    str=
+    for ((i=1; i<=$width; i++))
+    do 
+        str="${str}_"
+    done
+    #echo -e "$str"
     nl
     echo -e "Please provide some \"Basic Information\"..."
     read -erp "What is the Main Complaint (summarized)? " main_complaint
     read -erp "Describe the Problem: " problem_description
     clear -x
+    unset -v i cols width str
 }
 
 function GetMachineInfo()
@@ -1783,6 +1786,8 @@ function ReportHeader()
     echo -e "---------------------------------------------------------------"
     echo -e "Main Complaint: $main_complaint"
     echo -e "Problem Description:  $problem_description"
+    
+    unset -v main_complaint problem_description
 }
 
 function MessageView()
@@ -1849,10 +1854,11 @@ function Pause()
 }
 
 function PassPhrase() {
-    read -erp "Press any key to continue\n" ans
+    read -erp "Press any key to continue:  " ans
     ans=$ans
     if [[ "$ans" == "I am Groot" ]]
     then
+        echo -e "Running Script: ${sname} $version"
         sleep 0.2
     else
         echo -e "Exiting script"
