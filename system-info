@@ -816,7 +816,7 @@ function GetMem()
 function GetSwap () {
     # Gets more swap information. Called once by GetMachineInfo().
     fstab_info=$(grep 'swap' /etc/fstab )
-    swaps_info=$(awk '{print $0}' )
+    swaps_info=$(awk '{print $0}' /proc/swaps )
     sw_proc=$(awk '{print $0}' /proc/sys/vm/swappiness )
     sw_sysctl=$(grep 'vm.swappiness' /etc/sysctl.conf )
     valid_settings="10 - 60"
