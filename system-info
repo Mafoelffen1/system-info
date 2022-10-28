@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-02, Script Date: 2022.10.16"
+version="Version: 02.00-03, Script Date: 2022.10.28"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1278,9 +1278,44 @@ function GetSoundDevices() {
         echo -e "No sound devices found. Also check in 'lsusb' section."
         nl
     fi
+    if [[ "$detail_level" == "-vv" ]]
+    then
+        # Only displays in detailed mode
+        echo -e "   --- More Sound Device info from 'aplay' ----"         
+        aplay --list-devices --list-pcms
+        nl
+    fi
     GetMoreAlsaInformation
 
     unset -v sound_device sound_device_list
+}
+
+function GetKeyMap() {
+    echo -e "${setansi}---------- KeyMap and Locale Information from from various sources:$ransi"
+
+    echo -e "   --- Keymap Info from 'setxkbmap' ----"  
+    setxkbmap -query  
+    nl
+    if [[ "$detail_level" == "-vv" ]]   
+    then  
+        echo -e "   --- More Keymap Info from 'xset' ----"  
+        xset -q 
+        nl
+        echo -e "   --- More Keymap Info from 'gsettings' ----" 
+        input_sources=$(gsettings get org.gnome.desktop.input-sources sources ) 
+        echo -e "gsettings input-sources:  $input_sources "
+        nl
+    fi
+          
+    echo -e "   --- Lcoale Info from 'localectl' ----"  
+    localectl status 
+    nl 
+    if [[ "$detail_level" == "-vv" ]]   
+    then  
+        echo -e "   --- More Locale Info from 'locale' ----"  
+        locale 
+        nl
+    fi
 }
 
 function GetRepositories()
@@ -2006,6 +2041,7 @@ function Writer
     GetGraphicsEnv
     GetSoundDevices
     GetRepositories
+    GetKeyMap
     GetOtherDetails
     if [[ "$less_status" != "less" ]]
     then
