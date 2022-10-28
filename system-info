@@ -41,6 +41,11 @@ arg2=$2
 # Set Report filename and path to
 sname="${0##*/}"   # flexible, needs quoting everywhere if spaces
 report="$HOME/${sname}.txt"
+#  Get present Locale settings
+localectl_status=$(localectl status  )
+locale_state=$(locale )
+LANG_Hx=$LANG
+LC_CTYPE_Hx=$LC_CTYPE
 # Set locale language settings
 LANG=C
 LC_CTYPE=C
@@ -87,6 +92,7 @@ trap "rm -f $manually_installed" EXIT 2> /dev/null
 trap "rm -f $default_installed" EXIT 2> /dev/null
 trap "rm -f $user_installed" EXIT 2> /dev/null
 trap "rm -f $ssh_data" EXIT 2> /dev/null
+trap "ResetLocale" EXIT 2> /dev/null
 
 ########################################################################
 #### Functions:
@@ -146,6 +152,7 @@ function CheckArgs()
     then
         # Versioning: At the commandline: [<ScriptName> -v] returns <VersionInfo>, then exits. 
         echo -e "$version";
+        ResetLocale
         exit;
     elif [[ "$arg1" == "-h" ]] || [[ "$arg1" == "--help" ]]
     then
@@ -186,6 +193,7 @@ function CheckArgs()
         echo -e "pastebin. Or added as a text attachment to a post."
         nl
         echo -e "We have tried to keep this safe and simple to use."
+        ResetLocale
         exit;
     elif [[ "$arg1" == "-s" ]] || [[ "$arg1" == "--show" ]]
     then
@@ -194,6 +202,7 @@ function CheckArgs()
             verbosity=$arg2
         else
             echo -e "Startup Option out of range."
+            ResetLocale
             exit_code=1
             exit $exit_code;
         fi
@@ -202,6 +211,11 @@ function CheckArgs()
         detail_level='-vv'
         zfs_detail=0
     fi
+}
+
+function ResetLocale() {
+    LANG=$LANG_Hx
+    LC_CTYPE=$LC_CTYPE_Hx  
 }
 
 function CheckTypeError() {
@@ -537,6 +551,7 @@ function CheckPrerequisites()
             then
                 echo -e "Please install the missing programs listed above before rerunning script." 
                 debug "User choose to exit after missing programs." 1
+                ResetLocale
                 exit_code=0
                 exit $exit_code
             elif [[ ${ans,} =~ ^[Cc]$ ]]
@@ -1307,13 +1322,13 @@ function GetKeyMap() {
         nl
     fi
           
-    echo -e "   --- Lcoale Info from 'localectl' ----"  
-    localectl status 
+    echo -e "   --- Locale Info from 'localectl' ----"  
+    echo -e "$localectl_status"
     nl 
     if [[ "$detail_level" == "-vv" ]]   
     then  
         echo -e "   --- More Locale Info from 'locale' ----"  
-        locale 
+        echo -e "$locale_state"
         nl
     fi
 }
@@ -1950,6 +1965,7 @@ function PassPhrase() {
         sleep 0.2
     else
         echo -e "Exiting script"
+        ResetLocale
         exit_code=106
         exit $exit_code
     fi
@@ -2007,6 +2023,7 @@ function ArchiveReport() {
                         echo -e "$sname.txt was not compressed. Archive file not created."
                         nl
                         Pause
+                        ResetLocale
                         exit 1
                     fi
                     cd $cwd
@@ -2143,6 +2160,7 @@ function DoPaste()
             ;;
         *)
             echo -e "Something went wrong. Error out of range."
+            ResetLocale
             exit_code=105
             exit $exit_code
     esac    
@@ -2312,6 +2330,7 @@ logger()
             ;;
         *)
             echo -e "Something went wrong. Log option out of range."
+            ResetLocale
             exit 1
             ;;
     esac
@@ -2353,6 +2372,7 @@ ReportCleaner
 Paster
 ## Optional - Archive Report if size larger than 19.5k
 ArchiveReport
+ResetLocale
 exit $exit_code
 
 
