@@ -1443,13 +1443,18 @@ function GetInstallMedia()
             installer_media=$(sudo head -n 1 /var/log/installer/media-info | \
                 awk '{print "Original Installation Media: "$0}' ) # Local Var
             echo -e "$installer_media"
+        elif [ -f /var/anaconda/journal.log ]
+        then
+            # RHEL Branch
+            installer_media=$(grep -i 'CDLABEL' | head -n 1 | awk '{print $10}' | sed 's/root=live:CDLABEL=//g' )
+            echo -e "$installer_media"
         else
             echo -e "The Installer log directory exists, but the Installer log files have been removed."
             echo -e "This system may have been installed from a distribution  image file."
         fi
     else
-        echo -e "Original Installation Media: Cannot determine which ISO this was installed from. "
-        echo -e "The Installer Log Directory does not exist. This system may have been from a Live Image Environment (LIE)."
+        echo -e "Original Installation Media: Cannot determine which ISO this was installed from (yet). "
+        echo -e "The Installer Log Directory does not exist. "
     fi
     unset -v installer_media
 }
