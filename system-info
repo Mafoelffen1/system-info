@@ -1333,8 +1333,10 @@ function GetKeyMap() {
         if [ -f /etc/default/keyboard ] 
         then 
             awk '{print $0}' /etc/default/keyboard
+            nl
         else
             echo -e "This is console-only and not Debian Branch."
+            nl
         fi
     fi
           
