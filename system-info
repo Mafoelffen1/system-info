@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-03, Script Date: 2022.10.28"
+version="Version: 02.00-03, Script Date: 2022.10.29"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1308,18 +1308,34 @@ function GetSoundDevices() {
 function GetKeyMap() {
     echo -e "${setansi}---------- KeyMap and Locale Information from from various sources:$ransi"
 
-    echo -e "   --- Keymap Info from 'setxkbmap' ----"  
-    setxkbmap -query  
-    nl
-    if [[ "$detail_level" == "-vv" ]]   
-    then  
-        echo -e "   --- More Keymap Info from 'xset' ----"  
-        xset -q 
+    # setxkbmap & xset are part of package 'x11-xserver-utils', not installed if no xserver present.
+    # In Ubuntu: /etc/default/... cfg are keyboard and locale files
+    get_console_desktop=$([ -d /usr/share/xsessions/ ] && \
+        echo "Desktop" || \
+        echo "Console") # Local Var
+    if [ "$get_console_desktop" == "Desktop" ]
+    then
+        echo -e "   --- Keymap Info from 'setxkbmap' ----"  
+        setxkbmap -query  2> /dev/null
         nl
-        echo -e "   --- More Keymap Info from 'gsettings' ----" 
-        input_sources=$(gsettings get org.gnome.desktop.input-sources sources ) 
-        echo -e "gsettings input-sources:  $input_sources "
-        nl
+        if [[ "$detail_level" == "-vv" ]]   
+        then  
+            echo -e "   --- More Keymap Info from 'xset' ----"  
+            xset -q 2> /dev/null
+            nl
+            echo -e "   --- More Keymap Info from 'gsettings' ----" 
+            input_sources=$(gsettings get org.gnome.desktop.input-sources sources 2> /dev/null ) 
+            echo -e "gsettings input-sources:  $input_sources "
+            nl
+        fi
+    else
+        echo -e "   --- Keymap Info from 'setxkbmap' ----"
+        if [ -f /etc/default/keyboard ] 
+        then 
+            awk '{print $0}' /etc/default/keyboard
+        else
+            echo -e "This is console-only and not Debian Branch."
+        fi
     fi
           
     echo -e "   --- Locale Info from 'localectl' ----"  
@@ -1331,6 +1347,7 @@ function GetKeyMap() {
         echo -e "$locale_state"
         nl
     fi
+    unset -v get_console_desktop input_sources
 }
 
 function GetRepositories()
@@ -1447,6 +1464,11 @@ function GetInstallMedia()
         then
             # RHEL Branch
             installer_media=$(grep -i 'CDLABEL' | head -n 1 | awk '{print $10}' | sed 's/root=live:CDLABEL=//g' )
+            echo -e "$installer_media"
+        elif [ -f /var/anaconda/journal.log ]
+        then
+            # SUSE Branch
+            installer_media=$(sudo grep 'alias' /var/log/zypper.log | grep 'SUSE' | head -n 1 | awk '{print $10}' )
             echo -e "$installer_media"
         else
             echo -e "The Installer log directory exists, but the Installer log files have been removed."
