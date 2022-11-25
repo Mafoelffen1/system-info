@@ -2427,6 +2427,7 @@ UserInput
 Writer less | \
     less -R    # writing to less
 ## Post processing
+echo -e "Processing Report. This may take about 30 seconds."
 RmOldReport
 #RestorePath ## This needed if we ever get CheckPath() working
 Writer | \
