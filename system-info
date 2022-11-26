@@ -2297,7 +2297,6 @@ function Paster()
                          nl
                          echo -e "View at: $return_url" | tee -a "$linklog"
                          nl
-                         Pause
                      else
                          echo -e "$redback Upload process failed $resetvid"
                          echo -e "The upload utility reported that the upload was susccessful, "
