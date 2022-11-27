@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-04, Script Date: 2022.11.25"
+version="Version: 02.00-04, Script Date: 2022.11.26"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1986,6 +1986,12 @@ function MessageLess()
     SensitiveDataWarning
  }
  
+function MessageWait() 
+{
+    echo -e "Processing Report. This may take about 30 seconds."
+    nl
+}
+
 function SensitiveDataWarning() 
 {
     echo -e "$redback --- SENSITIVE DATA WARNING --- $resetvid "
@@ -2423,11 +2429,11 @@ CheckTypeError
 CheckPrerequisites
 ## Report
 UserInput
+MessageWait
 Writer less | \
     less -R    # writing to less
 ## Post processing
-echo -e "Processing Report. This may take about 30 seconds."
-nl
+MessageWait
 RmOldReport
 #RestorePath ## This needed if we ever get CheckPath() working
 Writer | \
