@@ -33,6 +33,7 @@ The UbuntuForums 'system-info' Script is now available to install as a .deb pack
 https://launchpad.net/~mafoelffen/+archive/ubuntu/system-info
 
 You can add this PPA to your system and install the package with:
+
     sudo add-apt-repository ppa:mafoelffen/system-info
     sudo apt update
     sudo apt install system-info
