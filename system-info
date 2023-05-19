@@ -1219,12 +1219,12 @@ function GetLuksInfo()
 
 function GetMdDevices()
 {
+    echo -e "${setansi}----------  mdadm RAID Information:$ransi"
     # Test for md devices
     md_devs=$(ls /sys/class/block/md*/md/* 2> /dev/null)
 
     if [ ! -z "$md_devs" ]
     then 
-        echo -e "${setansi}----------  mdadm RAID Information:$ransi"
         echo -e "mdadm RAID device present."
         nl
         grep 'raid\|level' /proc/mdstat | grep -v 'Personalities'
@@ -1269,6 +1269,7 @@ function GetBtrfs()
     if [ -z "$bt_lsblk" ]
     then 
         echo -e "There are no BTRFS vdev's present."
+        nl
     else
         echo -e "There are BTRFS vdev's present: "
         nl
