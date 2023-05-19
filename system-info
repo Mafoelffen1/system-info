@@ -804,7 +804,7 @@ function GetDmiDetails()
     if [ $bios_detail -eq 0 ]
     then
         echo -e "Further details from BIOS:"
-        sudo demidecode -t 0,1,4
+        sudo dmidecode -t 0,1,4
         nl
     fi
 }
@@ -1222,7 +1222,7 @@ function GetMdDevices()
     # Test for md devices
     md_devs=$(ls /sys/class/block/md*/md/* 2> /dev/null)
 
-    if [ ! -z md_devs ]
+    if [ ! -z "$md_devs" ]
     then 
         echo -e "${setansi}----------  mdadm RAID Information:$ransi"
         echo -e "mdadm RAID device present."
@@ -1233,7 +1233,7 @@ function GetMdDevices()
     else
         echo -e "No active md devices present."
         MdFile=$(grep '\/dev\/md\/' /etc/mdadm/mdadm.conf )
-        if [ ! -z $MdFile ]
+        if [ ! -z "$MdFile" ]
         then 
             nl
             echo -e "Inactive md devices from /etc/mdadm/mdadm.conf file: "
@@ -1249,7 +1249,7 @@ function GetMdInfo()
 {
     if [ $md_detail -eq 0 ]
     then 
-        sudo mdadm -D /dev/md*
+        sudo mdadm -D /dev/md* 2> /dev/null
         nl
         grep '\/dev\/md\/' /etc/mdadm/mdadm.conf
         nl
@@ -1738,7 +1738,7 @@ function GetHweInfo()
         if [[ "$ubuntu_flavor" == "0" ]]
         then
             GetHweRange
-            if [ ! -z $LTS_PKG ]
+            if [ ! -z "$LTS_PKG" ]
             then
                 GetHweKernels
                 CheckHwe
