@@ -1326,6 +1326,7 @@ function GetLvm2()
         GetLvm2Info
     else
         echo -e "There are no LVM2 volumes present."
+        nl
     fi
 }
     
