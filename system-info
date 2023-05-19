@@ -1241,6 +1241,7 @@ function GetMdDevices()
             nl
         fi
     fi
+    nl
     
     GetMdInfo
 }
@@ -1295,7 +1296,7 @@ function GetBtrfsInfo()
             SubVolName=$(sudo btrfs subvol list $vol | \
                 awk '{print $9} ' )
     
-            if [ -z $SubVolName ]
+            if [ -z "$SubVolName" ]
             then
                 echo -e "BTRFS filesystem present on $vol, but no BTRFS SubVolumes there."
                 nl
@@ -1328,6 +1329,7 @@ function GetLvm2()
         echo -e "There are no LVM2 volumes present."
         nl
     fi
+    nl
 }
     
 function GetLvm2Info()
