@@ -1241,7 +1241,7 @@ function GetMdDevices()
             nl
         fi
     fi
-    nl
+    #nl
     
     GetMdInfo
 }
@@ -1329,7 +1329,7 @@ function GetLvm2()
         echo -e "There are no LVM2 volumes present."
         nl
     fi
-    nl
+    #nl
 }
     
 function GetLvm2Info()
