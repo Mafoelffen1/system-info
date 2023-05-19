@@ -1266,11 +1266,11 @@ function GetBtrfs()
         cut -b 7- | \
         sed 's/^/\/dev\//g')
 
-    if [ -z bt_lsblk ]
+    if [ -z "$bt_lsblk" ]
     then 
         echo -e "There are no BTRFS vdev's present."
     else
-        echo -e "   --- There are BTRFS vdev's present: "
+        echo -e "There are BTRFS vdev's present: "
         nl
         echo -e "BT_VDEV    MOUNT"
         echo -e "$bt_lsblk"
@@ -1323,6 +1323,8 @@ function GetLvm2()
         nl
         lvm2_detail=0
         GetLvm2Info
+    else
+        echo -e "There are no LVM2 volumes present."
     fi
 }
     
