@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-07, Script Date: 2023.05.19"
+version="Version: 02.00-06, Script Date: 2023.03.20"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -801,7 +801,7 @@ function GetDmi()
 
 function GetDmiDetails()
 {
-    if [ bios_details -eq 0 ]
+    if [ $bios_detail -eq 0 ]
     then
         echo -e "Further details from BIOS:"
         sudo demidecode -t 0,1,4
@@ -1247,7 +1247,7 @@ function GetMdDevices()
 
 function GetMdInfo()
 {
-    if [ md_detail -eq 0 ]
+    if [ $md_detail -eq 0 ]
     then 
         sudo mdadm -D /dev/md*
         nl
@@ -1282,7 +1282,7 @@ function GetBtrfs()
 
 function GetBtrfsInfo()
 {
-    if [ btrfs_detail -eq 0 ]
+    if [ $btrfs_detail -eq 0 ]
     then
         # Get for BTRFS volume names
         btdev_vols=$(mount | \
