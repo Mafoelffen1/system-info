@@ -1336,23 +1336,23 @@ function GetLvm2Info()
 {    
     if [ $lvm2_detail -eq 0 ]
     then
-        sudo pvs
+        sudo pvs -v
         nl
-        sudo pvscan
+        sudo pvscan -v
         nl
-        sudo pvdisplay
+        sudo pvdisplay -v -m
         nl
-        sudo vgs
+        sudo vgs -v
         nl
-        sudo vgscan
+        sudo vgscan -v
         nl
-        sudo vgdisplay
+        sudo vgdisplay -v
         nl
         sudo lvs -a -o name,segtype,devices
         nl
-        sudo lvscan
+        sudo lvscan -v
         nl
-        sudo lvdisplay
+        sudo lvdisplay -v
         nl
 fi
 }
@@ -2665,6 +2665,5 @@ exit $exit_code
 #   - Document logic flow
 #
 # Add DEBUG statements:
-#   - To be able to step through logic flow for maintence.
-#
-# Possibly add more for LVM, ZFS, mdadm, and LUKS information(?)
+#   - To be able to step through logic flow for maintenence.
+# 
