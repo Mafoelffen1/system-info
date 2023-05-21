@@ -1232,7 +1232,7 @@ function GetMdDevices()
         md_detail=0
     else
         echo -e "No active md devices present."
-        MdFile=$(grep '\/dev\/md\/' /etc/mdadm/mdadm.conf 2 > /dev/null )
+        MdFile=$(grep '\/dev\/md\/' /etc/mdadm/mdadm.conf 2> /dev/null )
         if [ ! -z "$MdFile" ]
         then 
             nl
@@ -1316,7 +1316,7 @@ function GetLvm2()
         grep 'LVM' | \
         cut -b 7- | \
         sed 's/^/\/dev\//g' )
-    mapper_vdev=$(ls /dev/mapper | \
+    mapper_vdev=$(ls /dev/mapper/ | \
         grep -v 'control' )
 
     if [ ! -z "$lvm_vdev" ] && [ ! -z "$mapper_vdev" ]
