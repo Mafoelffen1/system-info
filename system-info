@@ -1232,7 +1232,7 @@ function GetMdDevices()
         md_detail=0
     else
         echo -e "No active md devices present."
-        MdFile=$(grep '\/dev\/md\/' /etc/mdadm/mdadm.conf )
+        MdFile=$(grep '\/dev\/md\/' /etc/mdadm/mdadm.conf 2 > /dev/null )
         if [ ! -z "$MdFile" ]
         then 
             nl
@@ -1252,7 +1252,7 @@ function GetMdInfo()
     then 
         sudo mdadm -D /dev/md* 2> /dev/null
         nl
-        grep '\/dev\/md\/' /etc/mdadm/mdadm.conf
+        grep '\/dev\/md\/' /etc/mdadm/mdadm.conf 2> /dev/null
         nl
     fi
 }
@@ -1348,7 +1348,7 @@ function GetLvm2Info()
         nl
         sudo vgdisplay
         nl
-        sudo lvs
+        sudo lvs -a -o name,segtype,devices
         nl
         sudo lvscan
         nl
