@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-08, Script Date: 2023.05.23"
+version="Version: 02.00-09, Script Date: 2023.05.23"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1294,20 +1294,15 @@ function GetBtrfsInfo()
 
         # Get for BTRFS volume names
         btdev_vols=$(mount | \
-            grep -v 'snap' | \
+            grep -v 'snap\var' | \
             grep 'btrfs' | \
             awk '{print $3}' )
             
         for vol in ${btdev_vols}
         do
-            if [ "$vol" == *"snap"* ]
-            then 
-                continue
-            else
-                echo "Properties of BTRFS Volume: $vol"
-                sudo btrfs property get $vol
-                nl
-            fi
+            echo "Properties of BTRFS Volume: $vol"
+            sudo btrfs property get $vol
+            nl
         done
             
         debug "Debug -- btdev_vols :"
@@ -1317,23 +1312,20 @@ function GetBtrfsInfo()
         do
             # echo "Debug -- vol: $vol"
             
-            if [ "$var" == *"snap"* ]
-            then 
-                continue
-            else 
-                SubVolName=$(sudo btrfs subvol list $vol | \
-                    awk '{print $9} ' )
-    
-                debug "Debug -- SubVolName: $SubVolName"
+            FsName=$()
             
-                if [ -z "$SubVolName" ]
-                then
-                    echo -e "BTRFS filesystem present on $vol, but no BTRFS SubVolumes there."
-                    nl
-                else
-                    sudo btrfs subvol show -h $vol
-                    nl
-                fi
+            SubVolName=$(sudo btrfs subvol list $vol | \
+                awk '{print $9} ' )
+    
+            debug "Debug -- SubVolName: $SubVolName"
+            
+            if [ -z "$SubVolName" ]
+            then
+                echo -e "BTRFS filesystem present on $vol, but no BTRFS SubVolumes there."
+                nl
+            else
+                sudo btrfs subvol show -h $vol
+                nl
             fi
         done
     fi
