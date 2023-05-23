@@ -33,7 +33,7 @@
 #### Variables
 ########################################################################
 # Versioning
-version="Version: 02.00-09, Script Date: 2023.05.23"
+version="Version: 02.00-08, Script Date: 2023.05.23"
 exit_code=0
 #md5_sum=$(md5sum $sname | sed 's/system.*//g' )
 arg1=$1
@@ -1268,7 +1268,7 @@ function GetBtrfs()
         cut -b 7- | \
         sed 's/^/\/dev\//g' )
         
-    debug "bt_lsblk: $bt_lsblk"
+    # echo "Debug -- bt_lsblk: $bt_lsblk"
 
     if [ -z "$bt_lsblk" ]
     then 
@@ -1294,7 +1294,7 @@ function GetBtrfsInfo()
 
         # Get for BTRFS volume names
         btdev_vols=$(mount | \
-            grep -v 'snap\var' | \
+            grep -v 'snap\' | \
             grep 'btrfs' | \
             awk '{print $3}' )
             
@@ -1305,8 +1305,8 @@ function GetBtrfsInfo()
             nl
         done
             
-        debug "Debug -- btdev_vols :"
-        debug "$btdev_vols" # DEBUG
+        # echo "Debug -- btdev_vols :"
+        # echo "$btdev_vols" # DEBUG
 
         for vol in ${btdev_vols[@]}
         do
@@ -1317,7 +1317,7 @@ function GetBtrfsInfo()
             SubVolName=$(sudo btrfs subvol list $vol | \
                 awk '{print $9} ' )
     
-            debug "Debug -- SubVolName: $SubVolName"
+            # echo "Debug -- SubVolName: $SubVolName"
             
             if [ -z "$SubVolName" ]
             then
